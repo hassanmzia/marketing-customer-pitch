@@ -95,7 +95,7 @@ export const customerApi = {
     api.get<PaginatedResponse<Customer>>('/customers/', { params: { search: query } }).then((r) => r.data),
 
   get360: (id: string) =>
-    api.get<Customer360>(`/customers/${id}/360-view/`).then((r) => r.data),
+    api.get<Customer360>(`/customers/${id}/customer-360/`).then((r) => r.data),
 
   bulkImport: (data: Partial<Customer>[]) =>
     api.post<{ imported: number; errors: string[] }>('/customers/bulk-import/', { customers: data }).then((r) => r.data),
