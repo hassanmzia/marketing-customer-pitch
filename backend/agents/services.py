@@ -737,16 +737,38 @@ class A2AService:
             f'[correlation: {correlation_id}]'
         )
 
-        # Get agent configs
+        # Get or create agent configs so A2A messages are always recorded
+        agent_defaults = {
+            'research': {
+                'name': 'Research Agent',
+                'description': 'Researches customer profiles and industry trends',
+            },
+            'pitch_generator': {
+                'name': 'Pitch Generator Agent',
+                'description': 'Generates personalized sales pitches',
+            },
+            'scorer': {
+                'name': 'Scoring Agent',
+                'description': 'Evaluates pitch quality on multiple dimensions',
+            },
+            'refiner': {
+                'name': 'Refinement Agent',
+                'description': 'Refines pitches based on scoring feedback',
+            },
+            'orchestrator': {
+                'name': 'Pipeline Orchestrator',
+                'description': 'Coordinates the multi-agent pipeline',
+            },
+        }
         agents = {}
-        for agent_type in ['research', 'pitch_generator', 'scorer', 'refiner', 'orchestrator']:
-            try:
-                agents[agent_type] = AgentConfig.objects.get(
-                    agent_type=agent_type, is_active=True
-                )
-            except AgentConfig.DoesNotExist:
-                logger.warning(f'No active {agent_type} agent found')
-                agents[agent_type] = None
+        for agent_type in agent_defaults:
+            agent, created = AgentConfig.objects.get_or_create(
+                agent_type=agent_type,
+                defaults={**agent_defaults[agent_type], 'is_active': True, 'metadata': {}},
+            )
+            if created:
+                logger.info(f'Auto-created {agent_type} agent config')
+            agents[agent_type] = agent
 
         orchestrator = agents.get('orchestrator')
         pipeline_result = {
