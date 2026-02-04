@@ -38,20 +38,25 @@ exit(result)
 done
 echo "  Redis is ready!"
 
+# ── Install any new Python dependencies ──────
+echo "[3/7] Installing Python dependencies..."
+pip install --no-cache-dir -q -r requirements.txt 2>/dev/null || true
+echo "  Dependencies installed!"
+
 # ── Run Database Migrations ──────────────────
-echo "[3/5] Running database migrations..."
+echo "[4/7] Running database migrations..."
 python manage.py makemigrations --noinput 2>/dev/null || true
 python manage.py migrate --noinput
 echo "  Migrations complete!"
 
 # ── Collect Static Files ─────────────────────
-echo "[4/5] Collecting static files..."
+echo "[5/7] Collecting static files..."
 python manage.py collectstatic --noinput --clear 2>/dev/null || \
 python manage.py collectstatic --noinput 2>/dev/null || \
 echo "  Static files collection skipped (no staticfiles configured yet)"
 
 # ── Create Superuser ─────────────────────────
-echo "[5/5] Creating superuser if it doesn't exist..."
+echo "[6/7] Creating superuser if it doesn't exist..."
 python manage.py shell -c "
 from django.contrib.auth import get_user_model
 User = get_user_model()

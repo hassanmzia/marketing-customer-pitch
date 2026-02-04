@@ -14,16 +14,6 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// GET /api/v1/campaigns/:id - Campaign detail
-router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const result = await backendProxy.get(`/api/v1/campaigns/${req.params.id}/`);
-    res.status(result.status).json(result.data);
-  } catch (error) {
-    next(error);
-  }
-});
-
 // POST /api/v1/campaigns - Create campaign
 router.post('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -34,20 +24,15 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// PUT /api/v1/campaigns/:id - Update campaign
-router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const result = await backendProxy.put(`/api/v1/campaigns/${req.params.id}/`, req.body);
-    res.status(result.status).json(result.data);
-  } catch (error) {
-    next(error);
-  }
-});
+// --- Sub-path routes BEFORE bare /:id ---
 
-// DELETE /api/v1/campaigns/:id - Delete campaign
-router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
+// POST /api/v1/campaigns/targets/:targetId/update-status - Update target status
+router.post('/targets/:targetId/update-status', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await backendProxy.delete(`/api/v1/campaigns/${req.params.id}/`);
+    const result = await backendProxy.post(
+      `/api/v1/campaigns/targets/${req.params.targetId}/update-status/`,
+      req.body,
+    );
     res.status(result.status).json(result.data);
   } catch (error) {
     next(error);
@@ -130,6 +115,38 @@ router.get('/:id/metrics', async (req: Request, res: Response, next: NextFunctio
       `/api/v1/campaigns/${req.params.id}/metrics/`,
       req.query as Record<string, unknown>,
     );
+    res.status(result.status).json(result.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// --- Bare /:id routes LAST ---
+
+// GET /api/v1/campaigns/:id - Campaign detail
+router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await backendProxy.get(`/api/v1/campaigns/${req.params.id}/`);
+    res.status(result.status).json(result.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PUT /api/v1/campaigns/:id - Update campaign
+router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await backendProxy.put(`/api/v1/campaigns/${req.params.id}/`, req.body);
+    res.status(result.status).json(result.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/v1/campaigns/:id - Delete campaign
+router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await backendProxy.delete(`/api/v1/campaigns/${req.params.id}/`);
     res.status(result.status).json(result.data);
   } catch (error) {
     next(error);

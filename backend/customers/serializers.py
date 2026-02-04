@@ -21,6 +21,7 @@ class CustomerInteractionSerializer(serializers.ModelSerializer):
 class CustomerSerializer(serializers.ModelSerializer):
     """Serializer for Customer list and create operations."""
     interaction_count = serializers.SerializerMethodField()
+    lead_score = serializers.SerializerMethodField()
 
     class Meta:
         model = Customer
@@ -35,6 +36,12 @@ class CustomerSerializer(serializers.ModelSerializer):
 
     def get_interaction_count(self, obj):
         return obj.interactions.count()
+
+    def get_lead_score(self, obj):
+        """Return the stored lead_score if non-zero, otherwise calculate it."""
+        if obj.lead_score and obj.lead_score > 0:
+            return obj.lead_score
+        return obj.calculate_lead_score()
 
 
 class CustomerDetailSerializer(CustomerSerializer):

@@ -169,6 +169,16 @@ class PitchViewSet(viewsets.ModelViewSet):
             metadata={'additional_context': additional_context},
         )
 
+        # Auto-update campaign target status to 'pitched'
+        if campaign_id:
+            from django.utils import timezone as tz
+            from campaigns.models import CampaignTarget
+            CampaignTarget.objects.filter(
+                campaign_id=campaign_id,
+                customer=customer,
+                status='pending',
+            ).update(status='pitched', pitched_at=tz.now())
+
         return Response(
             PitchSerializer(pitch).data,
             status=status.HTTP_201_CREATED,

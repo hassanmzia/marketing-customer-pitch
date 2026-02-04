@@ -152,3 +152,27 @@ class CampaignTargetViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['campaign', 'customer', 'status']
+
+    @action(detail=True, methods=['post'], url_path='update-status')
+    def update_status(self, request, pk=None):
+        """Update target status (pitched, responded, converted, rejected)."""
+        target = self.get_object()
+        new_status = request.data.get('status')
+        valid = [c[0] for c in CampaignTarget.Status.choices]
+        if new_status not in valid:
+            return Response(
+                {'error': f'Invalid status. Must be one of: {valid}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        target.status = new_status
+        if new_status == 'pitched' and not target.pitched_at:
+            target.pitched_at = timezone.now()
+        if new_status in ('responded', 'converted') and not target.responded_at:
+            target.responded_at = timezone.now()
+        target.save(update_fields=['status', 'pitched_at', 'responded_at', 'updated_at'])
+
+        # Update campaign metrics
+        from .tasks import update_campaign_metrics
+        update_campaign_metrics.delay(str(target.campaign_id))
+
+        return Response(CampaignTargetSerializer(target).data)

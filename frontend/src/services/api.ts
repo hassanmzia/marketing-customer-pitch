@@ -191,6 +191,9 @@ export const campaignApi = {
 
   removeTarget: (campaignId: string, targetId: string) =>
     api.delete(`/campaigns/${campaignId}/targets/${targetId}/`).then((r) => r.data),
+
+  updateTargetStatus: (targetId: string, status: string) =>
+    api.post<CampaignTarget>(`/campaigns/targets/${targetId}/update-status/`, { status }).then((r) => r.data),
 };
 
 // ─── Agent API ───────────────────────────────────────────────────────────────
