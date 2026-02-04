@@ -31,8 +31,9 @@ const getScoreColor = (score: number): { bar: string; text: string; bg: string }
 };
 
 const ScoreBar: React.FC<ScoreBarProps> = ({ label, score, maxScore = 10 }) => {
-  const percentage = (score / maxScore) * 100;
-  const colors = getScoreColor(score);
+  const safeScore = Number.isFinite(score) ? score : 0;
+  const percentage = (safeScore / maxScore) * 100;
+  const colors = getScoreColor(safeScore);
 
   return (
     <div className="space-y-1.5">
@@ -47,7 +48,7 @@ const ScoreBar: React.FC<ScoreBarProps> = ({ label, score, maxScore = 10 }) => {
             colors.text
           )}
         >
-          {Number(score).toFixed(1)}/{maxScore}
+          {safeScore.toFixed(1)}/{maxScore}
         </span>
       </div>
       <div className="w-full h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
@@ -71,7 +72,8 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
   compact = false,
   className,
 }) => {
-  const overallColor = getScoreColor(scores.overall_score);
+  const safeOverall = Number.isFinite(scores.overall_score) ? scores.overall_score : 0;
+  const overallColor = getScoreColor(safeOverall);
 
   if (compact) {
     return (
@@ -83,7 +85,7 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
             overallColor.text
           )}
         >
-          {Number(scores.overall_score).toFixed(1)}
+          {safeOverall.toFixed(1)}
         </div>
         <div>
           <p className="text-xs font-medium text-gray-900 dark:text-white">
@@ -108,7 +110,7 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
             overallColor.text
           )}
         >
-          {Number(scores.overall_score).toFixed(1)}
+          {safeOverall.toFixed(1)}
         </div>
         <div>
           <p className="text-sm font-semibold text-gray-900 dark:text-white">
