@@ -929,7 +929,7 @@ const PitchGenerator: React.FC = () => {
           {templates.map((tpl) => (
             <option key={tpl.id} value={tpl.id}>
               {tpl.name}
-              {tpl.avg_score ? ` (avg score: ${tpl.avg_score.toFixed(1)})` : ''}
+              {tpl.avg_score ? ` (avg score: ${Number(tpl.avg_score).toFixed(1)})` : ''}
             </option>
           ))}
         </select>
@@ -1536,7 +1536,7 @@ const PitchGenerator: React.FC = () => {
                     <div className="flex justify-between">
                       <span className="text-gray-500 dark:text-gray-400">Gen Time</span>
                       <span className="font-medium text-gray-900 dark:text-white">
-                        {generatedPitch.generation_time.toFixed(1)}s
+                        {Number(generatedPitch.generation_time).toFixed(1)}s
                       </span>
                     </div>
                   )}

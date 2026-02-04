@@ -96,13 +96,13 @@ export default function CampaignList() {
                   <div className="mt-3 grid grid-cols-2 gap-3">
                     {campaign.open_rate != null && (
                       <div>
-                        <div className="flex justify-between text-xs"><span className="text-gray-400">Open Rate</span><span className="font-medium text-gray-700 dark:text-gray-300">{(campaign.open_rate * 100).toFixed(0)}%</span></div>
+                        <div className="flex justify-between text-xs"><span className="text-gray-400">Open Rate</span><span className="font-medium text-gray-700 dark:text-gray-300">{(Number(campaign.open_rate) * 100).toFixed(0)}%</span></div>
                         <div className="mt-1 h-1 w-full rounded-full bg-gray-200 dark:bg-gray-700"><div className="h-full rounded-full bg-blue-500" style={{ width: `${campaign.open_rate * 100}%` }} /></div>
                       </div>
                     )}
                     {campaign.response_rate != null && (
                       <div>
-                        <div className="flex justify-between text-xs"><span className="text-gray-400">Response Rate</span><span className="font-medium text-gray-700 dark:text-gray-300">{(campaign.response_rate * 100).toFixed(0)}%</span></div>
+                        <div className="flex justify-between text-xs"><span className="text-gray-400">Response Rate</span><span className="font-medium text-gray-700 dark:text-gray-300">{(Number(campaign.response_rate) * 100).toFixed(0)}%</span></div>
                         <div className="mt-1 h-1 w-full rounded-full bg-gray-200 dark:bg-gray-700"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${campaign.response_rate * 100}%` }} /></div>
                       </div>
                     )}
@@ -112,7 +112,7 @@ export default function CampaignList() {
                 {/* Progress */}
                 {campaign.progress != null && (
                   <div className="mt-3">
-                    <div className="flex justify-between text-xs text-gray-400"><span>Progress</span><span>{(campaign.progress * 100).toFixed(0)}%</span></div>
+                    <div className="flex justify-between text-xs text-gray-400"><span>Progress</span><span>{(Number(campaign.progress) * 100).toFixed(0)}%</span></div>
                     <div className="mt-1 h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
                       <div className="h-full rounded-full bg-indigo-500" style={{ width: `${campaign.progress * 100}%` }} />
                     </div>

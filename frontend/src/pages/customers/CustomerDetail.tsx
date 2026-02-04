@@ -456,7 +456,7 @@ export default function CustomerDetail() {
                         <StatusBadge status={pitch.status} />
                         {pitch.overall_score != null && (
                           <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
-                            {(pitch.overall_score * 100).toFixed(0)}%
+                            {(Number(pitch.overall_score) * 100).toFixed(0)}%
                           </span>
                         )}
                       </div>
