@@ -9,7 +9,7 @@ services:
     container_name: pitch-postgres
     restart: unless-stopped
     ports:
-      - "${POSTGRES_PORT:-5464}:5432"
+      - "${POSTGRES_HOST_PORT:-5464}:5432"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-marketing_pitch_db}
       POSTGRES_USER: ${POSTGRES_USER:-pitch_user}
