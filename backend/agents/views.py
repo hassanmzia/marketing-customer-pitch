@@ -124,7 +124,7 @@ def orchestrate_pitch(request):
             'name': 'Pipeline Orchestrator',
             'description': 'Orchestrates the full pitch generation pipeline',
             'is_active': True,
-            'config': {},
+            'metadata': {},
         },
     )
 

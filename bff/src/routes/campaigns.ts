@@ -54,6 +54,39 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
   }
 });
 
+// GET /api/v1/campaigns/:id/targets - List campaign targets
+router.get('/:id/targets', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await backendProxy.get(
+      `/api/v1/campaigns/${req.params.id}/targets/`,
+      req.query as Record<string, unknown>,
+    );
+    res.status(result.status).json(result.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/v1/campaigns/:id/targets - Add targets to campaign
+router.post('/:id/targets', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await backendProxy.post(`/api/v1/campaigns/${req.params.id}/add-targets/`, req.body);
+    res.status(result.status).json(result.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/v1/campaigns/:id/targets/:targetId - Remove target
+router.delete('/:id/targets/:targetId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await backendProxy.delete(`/api/v1/campaigns/targets/${req.params.targetId}/`);
+    res.status(result.status).json(result.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST /api/v1/campaigns/:id/launch - Launch a campaign
 router.post('/:id/launch', async (req: Request, res: Response, next: NextFunction) => {
   try {
