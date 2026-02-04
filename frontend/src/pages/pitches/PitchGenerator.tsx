@@ -1,694 +1,1653 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import ReactMarkdown from 'react-markdown';
-import { format } from 'date-fns';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { customerApi, pitchApi, mcpApi } from '@/services/api';
+import { Customer, Pitch, PitchTemplate, PitchScore } from '@/types';
 import toast from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  User,
-  Search,
-  Sparkles,
-  FileText,
+  Users,
+  Wand2,
+  BarChart3,
   RefreshCw,
+  ChevronRight,
+  ChevronLeft,
+  Sparkles,
   Send,
-  MessageSquare,
-  Mail,
-  Copy,
   Download,
   ThumbsUp,
-  History,
-  Target,
+  MessageSquare,
+  Copy,
+  FileText,
   Zap,
-  Heart,
-  Briefcase,
-  AlertTriangle,
-  GitBranch,
-  X,
-  Loader2,
+  Target,
+  Mail,
+  Search,
+  Plus,
+  Check,
+  ChevronDown,
+  Clock,
+  Building2,
+  User,
 } from 'lucide-react';
-import clsx from 'clsx';
-
-import type { Customer, Pitch, PitchTemplate } from '@/types';
-import { customerApi, pitchApi, mcpApi, campaignApi } from '@/services/api';
-import Card from '@/components/common/Card';
-import StatusBadge from '@/components/common/StatusBadge';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
-import Modal from '@/components/common/Modal';
+import ReactMarkdown from 'react-markdown';
 import ScoreDisplay from '@/components/common/ScoreDisplay';
-import { usePitchStore } from '@/store';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
 
-const STEPS = [
-  { id: 1, label: 'Select Customer', icon: User },
-  { id: 2, label: 'Configure Pitch', icon: FileText },
-  { id: 3, label: 'Generated Pitch', icon: Sparkles },
-];
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+interface PitchConfig {
+  type: string;
+  tone: string;
+  templateId: string;
+  context: string;
+}
 
 const PITCH_TYPES = [
-  { value: 'initial', label: 'Initial Outreach', icon: Send, description: 'First contact with a new prospect' },
-  { value: 'follow_up', label: 'Follow-up', icon: RefreshCw, description: 'Follow-up on previous communication' },
-  { value: 'renewal', label: 'Renewal', icon: History, description: 'Contract or subscription renewal pitch' },
-  { value: 'product_demo', label: 'Product Demo', icon: Target, description: 'Product demonstration request' },
+  {
+    value: 'initial',
+    label: 'Initial Pitch',
+    description: 'First contact sales pitch',
+    icon: FileText,
+  },
+  {
+    value: 'follow_up',
+    label: 'Follow-up',
+    description: 'Follow up on previous contact',
+    icon: Mail,
+  },
+  {
+    value: 'product_demo',
+    label: 'Product Demo',
+    description: 'Product demonstration pitch',
+    icon: Zap,
+  },
+  {
+    value: 'renewal',
+    label: 'Renewal',
+    description: 'Renewal/retention pitch',
+    icon: RefreshCw,
+  },
 ];
 
-const TONES = [
-  { value: 'professional', label: 'Professional', icon: Briefcase, color: 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400' },
-  { value: 'casual', label: 'Casual', icon: MessageSquare, color: 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400' },
-  { value: 'friendly', label: 'Friendly', icon: Heart, color: 'bg-pink-50 border-pink-200 text-pink-700 dark:bg-pink-900/20 dark:border-pink-800 dark:text-pink-400' },
-  { value: 'urgent', label: 'Urgent', icon: AlertTriangle, color: 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-400' },
-  { value: 'consultative', label: 'Consultative', icon: Zap, color: 'bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-900/20 dark:border-purple-800 dark:text-purple-400' },
+const TONES = ['Professional', 'Casual', 'Friendly', 'Urgent', 'Consultative'];
+
+const QUICK_FEEDBACK = [
+  'More concise',
+  'More persuasive',
+  'Add urgency',
+  'Softer tone',
+  'Add data points',
+  'Stronger CTA',
 ];
 
-export default function PitchGenerator() {
+const INDUSTRIES = [
+  'Technology',
+  'Healthcare',
+  'Finance',
+  'Retail',
+  'Manufacturing',
+  'Education',
+  'Real Estate',
+  'Media',
+  'Energy',
+  'Other',
+];
+
+// ─── Animation Variants ─────────────────────────────────────────────────────
+
+const slideVariants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 300 : -300,
+    opacity: 0,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+  },
+  exit: (direction: number) => ({
+    x: direction < 0 ? 300 : -300,
+    opacity: 0,
+  }),
+};
+
+const fadeUpVariant = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 },
+};
+
+// ─── Step Indicator ─────────────────────────────────────────────────────────
+
+const StepIndicator: React.FC<{ currentStep: number }> = ({ currentStep }) => {
+  const steps = [
+    { label: 'Select Customer', icon: Users },
+    { label: 'Configure Pitch', icon: Sparkles },
+    { label: 'Review & Refine', icon: Wand2 },
+  ];
+
+  return (
+    <div className="flex items-center justify-center mb-8">
+      {steps.map((step, index) => {
+        const isCompleted = index < currentStep;
+        const isActive = index === currentStep;
+        const StepIcon = step.icon;
+
+        return (
+          <React.Fragment key={index}>
+            <div className="flex flex-col items-center">
+              <div
+                className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-300 ${
+                  isCompleted
+                    ? 'bg-green-500 border-green-500 text-white'
+                    : isActive
+                    ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/30'
+                    : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-400'
+                }`}
+              >
+                {isCompleted ? (
+                  <Check size={18} />
+                ) : (
+                  <StepIcon size={18} />
+                )}
+              </div>
+              <span
+                className={`mt-2 text-xs font-medium ${
+                  isActive
+                    ? 'text-blue-600 dark:text-blue-400'
+                    : isCompleted
+                    ? 'text-green-600 dark:text-green-400'
+                    : 'text-gray-400 dark:text-gray-500'
+                }`}
+              >
+                {step.label}
+              </span>
+            </div>
+            {index < steps.length - 1 && (
+              <div
+                className={`w-24 h-0.5 mx-2 mb-6 transition-all duration-300 ${
+                  index < currentStep
+                    ? 'bg-green-500'
+                    : 'bg-gray-200 dark:bg-gray-700'
+                }`}
+              />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+};
+
+// ─── Main Component ─────────────────────────────────────────────────────────
+
+const PitchGenerator: React.FC = () => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
-  const preselectedCustomer = searchParams.get('customer');
 
-  const [step, setStep] = useState(1);
-  const [customerSearch, setCustomerSearch] = useState('');
+  // Core wizard state
+  const [currentStep, setCurrentStep] = useState(0);
+  const [direction, setDirection] = useState(0);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [pitchType, setPitchType] = useState('initial');
-  const [tone, setTone] = useState('professional');
-  const [additionalContext, setAdditionalContext] = useState('');
-  const [selectedTemplate, setSelectedTemplate] = useState('');
-  const [selectedCampaign, setSelectedCampaign] = useState('');
+  const [pitchConfig, setPitchConfig] = useState<PitchConfig>({
+    type: 'initial',
+    tone: 'Professional',
+    templateId: '',
+    context: '',
+  });
   const [generatedPitch, setGeneratedPitch] = useState<Pitch | null>(null);
+  const [scores, setScores] = useState<PitchScore | null>(null);
 
-  const [showRefineModal, setShowRefineModal] = useState(false);
-  const [refineFeedback, setRefineFeedback] = useState('');
-  const [abVariants, setAbVariants] = useState<any>(null);
-  const [subjectLines, setSubjectLines] = useState<any>(null);
-  const [followUpSequence, setFollowUpSequence] = useState<any>(null);
+  // Step 1 state
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [showQuickCreate, setShowQuickCreate] = useState(false);
+  const [quickCustomer, setQuickCustomer] = useState({
+    name: '',
+    company: '',
+    industry: '',
+    description: '',
+  });
+
+  // Step 3 state
+  const [refinementFeedback, setRefinementFeedback] = useState('');
+  const [showRefinement, setShowRefinement] = useState(false);
+  const [abVariants, setAbVariants] = useState<any[] | null>(null);
+  const [subjectLines, setSubjectLines] = useState<any[] | null>(null);
+  const [followupSequence, setFollowupSequence] = useState<any[] | null>(null);
+  const [refinedPitch, setRefinedPitch] = useState<Pitch | null>(null);
   const [versionHistory, setVersionHistory] = useState<Pitch[]>([]);
 
-  const { data: customerData, isLoading: customersLoading } = useQuery<any>({
-    queryKey: ['customers', { search: customerSearch, limit: 20 }],
-    queryFn: () => customerApi.list({ search: customerSearch || undefined, limit: 20 }),
+  // ─── Queries ────────────────────────────────────────────────────────────────
+
+  const { data: customersData, isLoading: loadingCustomers } = useQuery({
+    queryKey: ['customers', customerSearch],
+    queryFn: () =>
+      customerSearch
+        ? customerApi.search(customerSearch)
+        : customerApi.list({ page_size: 50 }),
   });
 
-  const { data: preselectedCustomerData } = useQuery<any>({
-    queryKey: ['customer', preselectedCustomer],
-    queryFn: () => customerApi.get(preselectedCustomer!),
-    enabled: !!preselectedCustomer && !selectedCustomer,
-  });
-
-  const { data: templates } = useQuery<any>({
+  const { data: templatesData } = useQuery({
     queryKey: ['pitch-templates'],
     queryFn: () => pitchApi.getTemplates(),
   });
 
-  const { data: campaigns } = useQuery<any>({
-    queryKey: ['campaigns', 'active'],
-    queryFn: () => campaignApi.list({ status: 'active', limit: 50 }),
-  });
+  const customers = customersData?.results ?? [];
+  const templates = templatesData?.results ?? [];
+
+  // Pre-select customer from URL params
+  useEffect(() => {
+    const customerId = searchParams.get('customer');
+    if (customerId && customers.length > 0) {
+      const found = customers.find((c) => c.id === customerId);
+      if (found && !selectedCustomer) {
+        setSelectedCustomer(found);
+      }
+    }
+  }, [searchParams, customers, selectedCustomer]);
+
+  // ─── Mutations ──────────────────────────────────────────────────────────────
 
   const generateMutation = useMutation({
-    mutationFn: (data: any) => pitchApi.create(data),
-    onSuccess: (pitch: Pitch) => {
-      setGeneratedPitch(pitch);
-      setVersionHistory([pitch]);
-      setStep(3);
+    mutationFn: () =>
+      pitchApi.generate({
+        customer_id: selectedCustomer!.id,
+        pitch_type: pitchConfig.type,
+        tone: pitchConfig.tone,
+        template_id: pitchConfig.templateId || undefined,
+        additional_context: pitchConfig.context || undefined,
+      }),
+    onSuccess: (data) => {
+      setGeneratedPitch(data);
       toast.success('Pitch generated successfully!');
-      queryClient.invalidateQueries({ queryKey: ['pitches'] });
+      goToStep(2);
     },
     onError: (error: any) => {
-      toast.error(error?.message ?? 'Failed to generate pitch');
+      toast.error(error?.detail || 'Failed to generate pitch');
     },
   });
 
   const scoreMutation = useMutation({
-    mutationFn: (id: string) => pitchApi.score(id),
-    onSuccess: (scored: Pitch) => {
-      setGeneratedPitch(scored);
+    mutationFn: () => pitchApi.score(generatedPitch!.id),
+    onSuccess: (data) => {
+      setScores(data);
       toast.success('Pitch scored!');
-      queryClient.invalidateQueries({ queryKey: ['pitches'] });
     },
-    onError: () => toast.error('Failed to score pitch'),
+    onError: (error: any) => {
+      toast.error(error?.detail || 'Failed to score pitch');
+    },
   });
 
   const refineMutation = useMutation({
-    mutationFn: ({ id, feedback }: { id: string; feedback: string }) =>
-      pitchApi.refine(id, { feedback }),
-    onSuccess: (refined: Pitch) => {
-      setGeneratedPitch(refined);
-      setVersionHistory((prev) => [...prev, refined]);
-      setShowRefineModal(false);
-      setRefineFeedback('');
-      toast.success('Pitch refined!');
-      queryClient.invalidateQueries({ queryKey: ['pitches'] });
+    mutationFn: (feedback: string) =>
+      pitchApi.refine(generatedPitch!.id, feedback),
+    onSuccess: (data) => {
+      setRefinedPitch(data);
+      setVersionHistory((prev) => [generatedPitch!, ...prev]);
+      toast.success('Pitch refined successfully!');
     },
-    onError: () => toast.error('Failed to refine pitch'),
+    onError: (error: any) => {
+      toast.error(error?.detail || 'Failed to refine pitch');
+    },
   });
 
   const abVariantsMutation = useMutation({
-    mutationFn: (pitch: Pitch) =>
-      mcpApi.executeTool('pitch_ab_variants', { pitch_id: pitch.id, pitch_content: pitch.content }),
-    onSuccess: (data: any) => {
-      setAbVariants(data);
+    mutationFn: () =>
+      mcpApi.executeTool({
+        tool_name: 'pitch_ab_variants',
+        arguments: { pitch: generatedPitch!.content },
+      }),
+    onSuccess: (data) => {
+      const result = data.result as any;
+      setAbVariants(
+        Array.isArray(result) ? result : result?.variants ?? [result]
+      );
       toast.success('A/B variants generated!');
     },
-    onError: () => toast.error('Failed to generate A/B variants'),
+    onError: (error: any) => {
+      toast.error(error?.detail || 'Failed to generate variants');
+    },
   });
 
   const subjectLinesMutation = useMutation({
-    mutationFn: (pitch: Pitch) =>
-      mcpApi.executeTool('generate_subject_line', { pitch_id: pitch.id, pitch_content: pitch.content }),
-    onSuccess: (data: any) => {
-      setSubjectLines(data);
+    mutationFn: () =>
+      mcpApi.executeTool({
+        tool_name: 'generate_subject_line',
+        arguments: { pitch: generatedPitch!.content },
+      }),
+    onSuccess: (data) => {
+      const result = data.result as any;
+      setSubjectLines(
+        Array.isArray(result)
+          ? result
+          : result?.subject_lines ?? [result]
+      );
       toast.success('Subject lines generated!');
     },
-    onError: () => toast.error('Failed to generate subject lines'),
+    onError: (error: any) => {
+      toast.error(error?.detail || 'Failed to generate subject lines');
+    },
   });
 
-  const followUpMutation = useMutation({
-    mutationFn: (pitch: Pitch) =>
-      mcpApi.executeTool('generate_followup_sequence', {
-        pitch_id: pitch.id,
-        pitch_content: pitch.content,
-        customer_name: selectedCustomer?.name,
+  const followupMutation = useMutation({
+    mutationFn: () =>
+      mcpApi.executeTool({
+        tool_name: 'generate_followup_sequence',
+        arguments: {
+          pitch: generatedPitch!.content,
+          customer_name:
+            selectedCustomer!.name || selectedCustomer!.primary_contact_name,
+        },
       }),
-    onSuccess: (data: any) => {
-      setFollowUpSequence(data);
+    onSuccess: (data) => {
+      const result = data.result as any;
+      setFollowupSequence(
+        Array.isArray(result)
+          ? result
+          : result?.sequence ?? [result]
+      );
       toast.success('Follow-up sequence generated!');
     },
-    onError: () => toast.error('Failed to generate follow-up sequence'),
+    onError: (error: any) => {
+      toast.error(error?.detail || 'Failed to generate follow-up sequence');
+    },
   });
 
   const approveMutation = useMutation({
-    mutationFn: (id: string) => pitchApi.update(id, { status: 'approved' }),
-    onSuccess: (updated: Pitch) => {
-      setGeneratedPitch(updated);
+    mutationFn: () =>
+      pitchApi.update(generatedPitch!.id, { status: 'approved' }),
+    onSuccess: (data) => {
+      setGeneratedPitch(data);
       toast.success('Pitch approved!');
-      queryClient.invalidateQueries({ queryKey: ['pitches'] });
     },
-    onError: () => toast.error('Failed to approve pitch'),
+    onError: (error: any) => {
+      toast.error(error?.detail || 'Failed to approve pitch');
+    },
   });
 
-  useEffect(() => {
-    if (preselectedCustomerData && !selectedCustomer) {
-      setSelectedCustomer(preselectedCustomerData);
-    }
-  }, [preselectedCustomerData, selectedCustomer]);
+  const quickCreateMutation = useMutation({
+    mutationFn: () =>
+      customerApi.create({
+        primary_contact_name: quickCustomer.name,
+        company_name: quickCustomer.company,
+        industry: quickCustomer.industry,
+        notes: quickCustomer.description,
+        lifecycle_stage: 'lead',
+        engagement_score: 0,
+        pain_points: [],
+        current_solutions: [],
+        tags: [],
+        primary_contact_email: '',
+      }),
+    onSuccess: (data) => {
+      setSelectedCustomer(data);
+      setShowQuickCreate(false);
+      toast.success('Customer created!');
+    },
+    onError: (error: any) => {
+      toast.error(error?.detail || 'Failed to create customer');
+    },
+  });
 
-  const handleGenerate = () => {
-    if (!selectedCustomer) return;
-    generateMutation.mutate({
-      customer: selectedCustomer.id,
-      pitch_type: pitchType,
-      tone,
-      additional_context: additionalContext || undefined,
-      template: selectedTemplate || undefined,
-      campaign: selectedCampaign || undefined,
-    });
+  // ─── Helpers ────────────────────────────────────────────────────────────────
+
+  const goToStep = (step: number) => {
+    setDirection(step > currentStep ? 1 : -1);
+    setCurrentStep(step);
+  };
+
+  const getCustomerDisplayName = (c: Customer) =>
+    c.name || c.primary_contact_name || 'Unknown';
+
+  const getCustomerCompany = (c: Customer) =>
+    c.company || c.company_name || '';
+
+  const handleCopyContent = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard!');
   };
 
   const handleExport = () => {
     if (!generatedPitch) return;
-    const blob = new Blob([generatedPitch.content ?? ''], { type: 'text/markdown' });
+    const blob = new Blob([generatedPitch.content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${generatedPitch.title ?? 'pitch'}.md`;
+    a.download = `${generatedPitch.title || 'pitch'}.txt`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toast.success('Pitch exported!');
   };
 
-  const handleCopy = () => {
-    if (!generatedPitch?.content) return;
-    navigator.clipboard.writeText(generatedPitch.content);
-    toast.success('Copied to clipboard!');
+  const handleApplyRefinement = () => {
+    if (!refinementFeedback.trim()) {
+      toast.error('Please provide feedback for refinement');
+      return;
+    }
+    refineMutation.mutate(refinementFeedback);
   };
 
-  const resetWizard = () => {
-    setStep(1);
-    setGeneratedPitch(null);
-    setSelectedCustomer(null);
-    setAbVariants(null);
-    setSubjectLines(null);
-    setFollowUpSequence(null);
-    setVersionHistory([]);
-    setAdditionalContext('');
-    setSelectedTemplate('');
-    setSelectedCampaign('');
+  const getLeadScoreColor = (score: number) => {
+    if (score >= 70) return 'bg-green-500';
+    if (score >= 40) return 'bg-yellow-500';
+    return 'bg-red-500';
   };
 
-  const customers = customerData?.results ?? [];
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      lead: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+      prospect: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+      opportunity: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+      customer: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+      churned: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+    };
+    return colors[status] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
+  };
 
-  return (
-    <motion.div className="space-y-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+  // ─── Step 1: Select Customer ────────────────────────────────────────────────
+
+  const renderStep1 = () => (
+    <motion.div
+      key="step1"
+      custom={direction}
+      variants={slideVariants}
+      initial="enter"
+      animate="center"
+      exit="exit"
+      transition={{ type: 'tween', duration: 0.3 }}
+      className="space-y-6"
+    >
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => navigate('/pitches')}
-          className="text-gray-400 transition hover:text-gray-600 dark:hover:text-gray-200"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
+      <div className="flex items-center gap-3">
+        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30">
+          <Users size={20} className="text-blue-600 dark:text-blue-400" />
+        </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Generate New Pitch</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">AI-powered pitch generation wizard</p>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Step 1: Select Customer
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Choose a customer to personalize the pitch for
+          </p>
         </div>
       </div>
 
-      {/* Step Indicator */}
-      <div className="flex items-center justify-center gap-2">
-        {STEPS.map((s, idx) => {
-          const Icon = s.icon;
-          const isActive = step === s.id;
-          const isCompleted = step > s.id;
-          return (
-            <React.Fragment key={s.id}>
-              {idx > 0 && (
-                <div className={clsx('h-0.5 w-12 transition-colors', isCompleted ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700')} />
-              )}
-              <div
-                className={clsx(
-                  'flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition',
-                  isActive
-                    ? 'bg-indigo-600 text-white shadow-md'
-                    : isCompleted
-                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
-                    : 'bg-gray-100 text-gray-400 dark:bg-gray-800'
-                )}
-              >
-                {isCompleted ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
-                <span className="hidden sm:inline">{s.label}</span>
-              </div>
-            </React.Fragment>
-          );
-        })}
+      {/* Search */}
+      <div className="relative">
+        <Search
+          size={18}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+        />
+        <input
+          type="text"
+          placeholder="Search customers by name, company, or industry..."
+          value={customerSearch}
+          onChange={(e) => setCustomerSearch(e.target.value)}
+          className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+        />
       </div>
 
-      <AnimatePresence mode="wait">
-        {/* STEP 1: Select Customer */}
-        {step === 1 && (
-          <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="mx-auto max-w-3xl space-y-6">
-            <Card className="p-6">
-              <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Select a Customer</h2>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search customers by name, company, or industry..."
-                  value={customerSearch}
-                  onChange={(e) => setCustomerSearch(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 bg-white py-3 pl-10 pr-4 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                />
-              </div>
-              {customersLoading ? (
-                <div className="py-8"><LoadingSpinner /></div>
-              ) : (
-                <div className="mt-4 max-h-80 space-y-2 overflow-y-auto">
-                  {customers.map((customer: any) => (
-                    <button
-                      key={customer.id}
-                      onClick={() => setSelectedCustomer(customer)}
-                      className={clsx(
-                        'flex w-full items-center gap-3 rounded-lg border p-3 text-left transition',
-                        selectedCustomer?.id === customer.id
-                          ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                          : 'border-gray-200 hover:border-indigo-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800'
-                      )}
-                    >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 text-sm font-bold text-white">
-                        {customer.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 dark:text-white">{customer.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{customer.company} &middot; {customer.industry}</p>
-                      </div>
-                      <StatusBadge status={customer.status} />
-                      {selectedCustomer?.id === customer.id && <Check className="h-5 w-5 text-indigo-600" />}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </Card>
+      {/* Customer Grid */}
+      {loadingCustomers ? (
+        <div className="flex justify-center py-12">
+          <LoadingSpinner size="lg" label="Loading customers..." />
+        </div>
+      ) : customers.length === 0 ? (
+        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+          <Users size={40} className="mx-auto mb-3 opacity-40" />
+          <p>No customers found. Try a different search or create one below.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {customers.map((customer) => {
+            const isSelected = selectedCustomer?.id === customer.id;
+            const displayName = getCustomerDisplayName(customer);
+            const company = getCustomerCompany(customer);
+            const leadScore = customer.lead_score ?? customer.engagement_score ?? 0;
+            const status = customer.status || customer.lifecycle_stage || 'lead';
 
-            {selectedCustomer && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                <Card className="border-indigo-200 bg-indigo-50/50 p-6 dark:border-indigo-800 dark:bg-indigo-900/10">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Selected Customer</p>
-                      <h3 className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{selectedCustomer.name}</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {selectedCustomer.company} &middot; {selectedCustomer.industry} &middot; Lead Score: {selectedCustomer.lead_score ?? 0}
-                      </p>
-                      {selectedCustomer.pain_points && (
-                        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                          <span className="font-medium">Pain points:</span> {selectedCustomer.pain_points}
-                        </p>
-                      )}
-                    </div>
-                    <button onClick={() => setSelectedCustomer(null)} className="text-gray-400 hover:text-gray-600">
-                      <X className="h-5 w-5" />
-                    </button>
+            return (
+              <motion.div
+                key={customer.id}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setSelectedCustomer(customer)}
+                className={`relative cursor-pointer rounded-xl border-2 p-4 transition-all ${
+                  isSelected
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-lg shadow-blue-500/10'
+                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md'
+                }`}
+              >
+                {isSelected && (
+                  <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
+                    <Check size={14} className="text-white" />
                   </div>
-                </Card>
+                )}
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+                      {displayName}
+                    </h3>
+                    {company && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
+                        <Building2 size={12} />
+                        {company}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {customer.industry && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                        {customer.industry}
+                      </span>
+                    )}
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium capitalize ${getStatusColor(
+                        status
+                      )}`}
+                    >
+                      {status}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                      <span>Lead Score</span>
+                      <span className="font-medium">{leadScore}</span>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(leadScore, 100)}%` }}
+                        transition={{ duration: 0.5, delay: 0.1 }}
+                        className={`h-full rounded-full ${getLeadScoreColor(leadScore)}`}
+                      />
+                    </div>
+                  </div>
+                </div>
               </motion.div>
-            )}
+            );
+          })}
+        </div>
+      )}
 
-            <div className="flex justify-end">
-              <button
-                disabled={!selectedCustomer}
-                onClick={() => setStep(2)}
-                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* STEP 2: Configure Pitch */}
-        {step === 2 && (
-          <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="mx-auto max-w-3xl space-y-6">
-            <Card className="p-6">
-              <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Pitch Type</h2>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {PITCH_TYPES.map((type) => {
-                  const Icon = type.icon;
-                  return (
-                    <button
-                      key={type.value}
-                      onClick={() => setPitchType(type.value)}
-                      className={clsx(
-                        'flex items-start gap-3 rounded-xl border-2 p-4 text-left transition',
-                        pitchType === type.value
-                          ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                          : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600'
-                      )}
-                    >
-                      <div className={clsx('rounded-lg p-2', pitchType === type.value ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800')}>
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{type.label}</p>
-                        <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{type.description}</p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </Card>
-
-            <Card className="p-6">
-              <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Tone</h2>
-              <div className="flex flex-wrap gap-3">
-                {TONES.map((t) => {
-                  const Icon = t.icon;
-                  return (
-                    <button
-                      key={t.value}
-                      onClick={() => setTone(t.value)}
-                      className={clsx(
-                        'flex items-center gap-2 rounded-full border-2 px-4 py-2 text-sm font-medium transition',
-                        tone === t.value
-                          ? t.color + ' border-current'
-                          : 'border-gray-200 text-gray-500 hover:border-gray-300 dark:border-gray-700 dark:text-gray-400'
-                      )}
-                    >
-                      <Icon className="h-4 w-4" /> {t.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </Card>
-
-            <Card className="space-y-4 p-6">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Additional Context (Optional)</label>
-                <textarea
-                  value={additionalContext}
-                  onChange={(e) => setAdditionalContext(e.target.value)}
-                  rows={3}
-                  placeholder="Any specific points to emphasize, competitive advantages, recent news..."
-                  className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {/* Selected Customer Summary */}
+      <AnimatePresence>
+        {selectedCustomer && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10 p-5">
+              <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-3">
+                Selected Customer
+              </h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Template (Optional)</label>
-                  <select value={selectedTemplate} onChange={(e) => setSelectedTemplate(e.target.value)} className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white">
-                    <option value="">None - AI will generate freely</option>
-                    {(templates?.results ?? templates ?? []).map((t: any) => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Name</p>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {getCustomerDisplayName(selectedCustomer)}
+                  </p>
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Campaign (Optional)</label>
-                  <select value={selectedCampaign} onChange={(e) => setSelectedCampaign(e.target.value)} className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white">
-                    <option value="">No campaign</option>
-                    {(campaigns?.results ?? []).map((c: any) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Company</p>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {getCustomerCompany(selectedCustomer) || '-'}
+                  </p>
                 </div>
-              </div>
-            </Card>
-
-            <div className="flex justify-between">
-              <button onClick={() => setStep(1)} className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-6 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                <ArrowLeft className="h-4 w-4" /> Back
-              </button>
-              <button
-                onClick={handleGenerate}
-                disabled={generateMutation.isLoading}
-                className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-2.5 text-sm font-medium text-white shadow-md transition hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50"
-              >
-                {generateMutation.isLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>) : (<><Sparkles className="h-4 w-4" /> Generate Pitch</>)}
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* STEP 3: Generated Pitch */}
-        {step === 3 && generatedPitch && (
-          <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-            <div className="grid grid-cols-1 gap-6 xl:grid-cols-4">
-              <div className="space-y-6 xl:col-span-3">
-                {/* Pitch Content */}
-                <Card className="p-6">
-                  <div className="mb-4 flex items-start justify-between">
-                    <div>
-                      <h2 className="text-xl font-bold text-gray-900 dark:text-white">{generatedPitch.title}</h2>
-                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        For {selectedCustomer?.name} &middot; <span className="capitalize">{generatedPitch.pitch_type?.replace(/_/g, ' ')}</span> &middot; <span className="capitalize">{generatedPitch.tone}</span> tone
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Industry</p>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {selectedCustomer.industry || '-'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Stage</p>
+                  <p className="font-medium text-gray-900 dark:text-white capitalize">
+                    {selectedCustomer.lifecycle_stage || selectedCustomer.status || '-'}
+                  </p>
+                </div>
+                {selectedCustomer.primary_contact_email && (
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Email</p>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {selectedCustomer.primary_contact_email}
+                    </p>
+                  </div>
+                )}
+                {selectedCustomer.budget_range && (
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Budget</p>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {selectedCustomer.budget_range}
+                    </p>
+                  </div>
+                )}
+                {selectedCustomer.decision_timeline && (
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Timeline</p>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {selectedCustomer.decision_timeline}
+                    </p>
+                  </div>
+                )}
+                {selectedCustomer.pain_points &&
+                  (Array.isArray(selectedCustomer.pain_points)
+                    ? selectedCustomer.pain_points.length > 0
+                    : selectedCustomer.pain_points) && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Pain Points</p>
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {Array.isArray(selectedCustomer.pain_points)
+                          ? selectedCustomer.pain_points.join(', ')
+                          : selectedCustomer.pain_points}
                       </p>
                     </div>
-                    <StatusBadge status={generatedPitch.status} />
-                  </div>
-                  <div className="prose prose-sm max-w-none dark:prose-invert">
-                    <ReactMarkdown>{generatedPitch.content ?? ''}</ReactMarkdown>
-                  </div>
-                </Card>
+                  )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-                {/* Scores */}
-                {(generatedPitch.persuasiveness_score != null || generatedPitch.clarity_score != null || generatedPitch.relevance_score != null) && (
-                  <Card className="p-6">
-                    <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Pitch Score</h3>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                      {[
-                        { label: 'Persuasiveness', value: generatedPitch.persuasiveness_score, color: 'bg-purple-500' },
-                        { label: 'Clarity', value: generatedPitch.clarity_score, color: 'bg-blue-500' },
-                        { label: 'Relevance', value: generatedPitch.relevance_score, color: 'bg-emerald-500' },
-                      ].map((score) => (
-                        <div key={score.label}>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600 dark:text-gray-400">{score.label}</span>
-                            <span className="font-bold text-gray-900 dark:text-white">{score.value != null ? `${(score.value * 100).toFixed(0)}%` : '--'}</span>
-                          </div>
-                          <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                            <motion.div className={clsx('h-full rounded-full', score.color)} initial={{ width: 0 }} animate={{ width: `${(score.value ?? 0) * 100}%` }} transition={{ duration: 1, ease: 'easeOut', delay: 0.2 }} />
-                          </div>
-                        </div>
+      {/* Quick Create Customer */}
+      <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+        <button
+          onClick={() => setShowQuickCreate(!showQuickCreate)}
+          className="flex items-center justify-between w-full px-5 py-3 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        >
+          <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+            <Plus size={16} />
+            Quick Create Customer
+          </div>
+          <ChevronDown
+            size={16}
+            className={`text-gray-400 transition-transform ${
+              showQuickCreate ? 'rotate-180' : ''
+            }`}
+          />
+        </button>
+        <AnimatePresence>
+          {showQuickCreate && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="p-5 space-y-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Contact Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={quickCustomer.name}
+                      onChange={(e) =>
+                        setQuickCustomer((prev) => ({ ...prev, name: e.target.value }))
+                      }
+                      placeholder="John Smith"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Company *
+                    </label>
+                    <input
+                      type="text"
+                      value={quickCustomer.company}
+                      onChange={(e) =>
+                        setQuickCustomer((prev) => ({ ...prev, company: e.target.value }))
+                      }
+                      placeholder="Acme Corp"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Industry
+                  </label>
+                  <select
+                    value={quickCustomer.industry}
+                    onChange={(e) =>
+                      setQuickCustomer((prev) => ({ ...prev, industry: e.target.value }))
+                    }
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select industry...</option>
+                    {INDUSTRIES.map((ind) => (
+                      <option key={ind} value={ind}>
+                        {ind}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Description / Notes
+                  </label>
+                  <textarea
+                    value={quickCustomer.description}
+                    onChange={(e) =>
+                      setQuickCustomer((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
+                    placeholder="Brief description of the customer and their needs..."
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  />
+                </div>
+                <button
+                  onClick={() => quickCreateMutation.mutate()}
+                  disabled={
+                    !quickCustomer.name ||
+                    !quickCustomer.company ||
+                    quickCreateMutation.isPending
+                  }
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {quickCreateMutation.isPending ? (
+                    <LoadingSpinner size="sm" />
+                  ) : (
+                    <Plus size={16} />
+                  )}
+                  Create & Select
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Next Step */}
+      <div className="flex justify-end">
+        <button
+          onClick={() => goToStep(1)}
+          disabled={!selectedCustomer}
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
+        >
+          Next Step
+          <ChevronRight size={18} />
+        </button>
+      </div>
+    </motion.div>
+  );
+
+  // ─── Step 2: Configure Pitch ────────────────────────────────────────────────
+
+  const renderStep2 = () => (
+    <motion.div
+      key="step2"
+      custom={direction}
+      variants={slideVariants}
+      initial="enter"
+      animate="center"
+      exit="exit"
+      transition={{ type: 'tween', duration: 0.3 }}
+      className="space-y-6"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30">
+            <Sparkles size={20} className="text-purple-600 dark:text-purple-400" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Step 2: Configure Your Pitch
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Customize how your pitch will be generated
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => goToStep(0)}
+          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+        >
+          <ChevronLeft size={16} />
+          Back
+        </button>
+      </div>
+
+      {/* Selected customer badge */}
+      <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+        <User size={14} className="text-blue-500" />
+        <span className="text-sm text-blue-900 dark:text-blue-200">
+          Generating for:{' '}
+          <strong>
+            {getCustomerDisplayName(selectedCustomer!)} - {getCustomerCompany(selectedCustomer!)}
+          </strong>
+        </span>
+      </div>
+
+      {/* Pitch Type */}
+      <div>
+        <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
+          Pitch Type
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          {PITCH_TYPES.map((pt) => {
+            const isActive = pitchConfig.type === pt.value;
+            const Icon = pt.icon;
+            return (
+              <motion.button
+                key={pt.value}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() =>
+                  setPitchConfig((prev) => ({ ...prev, type: pt.value }))
+                }
+                className={`flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all ${
+                  isActive
+                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20 shadow-md shadow-purple-500/10'
+                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+              >
+                <div
+                  className={`flex items-center justify-center w-10 h-10 rounded-lg flex-shrink-0 ${
+                    isActive
+                      ? 'bg-purple-500 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                  }`}
+                >
+                  <Icon size={20} />
+                </div>
+                <div>
+                  <p
+                    className={`font-medium ${
+                      isActive
+                        ? 'text-purple-900 dark:text-purple-200'
+                        : 'text-gray-900 dark:text-white'
+                    }`}
+                  >
+                    {pt.label}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {pt.description}
+                  </p>
+                </div>
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Tone */}
+      <div>
+        <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
+          Tone
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {TONES.map((tone) => {
+            const isActive = pitchConfig.tone === tone;
+            return (
+              <button
+                key={tone}
+                onClick={() =>
+                  setPitchConfig((prev) => ({ ...prev, tone }))
+                }
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  isActive
+                    ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                {tone}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Template */}
+      <div>
+        <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
+          Template (Optional)
+        </label>
+        <select
+          value={pitchConfig.templateId}
+          onChange={(e) =>
+            setPitchConfig((prev) => ({ ...prev, templateId: e.target.value }))
+          }
+          className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+        >
+          <option value="">None - Generate from scratch</option>
+          {templates.map((tpl) => (
+            <option key={tpl.id} value={tpl.id}>
+              {tpl.name}
+              {tpl.avg_score ? ` (avg score: ${tpl.avg_score.toFixed(1)})` : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Additional Context */}
+      <div>
+        <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
+          Additional Context
+        </label>
+        <textarea
+          value={pitchConfig.context}
+          onChange={(e) =>
+            setPitchConfig((prev) => ({ ...prev, context: e.target.value }))
+          }
+          placeholder="Add any specific context, products, or talking points..."
+          rows={4}
+          className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none"
+        />
+      </div>
+
+      {/* Generate Button */}
+      <div className="flex items-center justify-between pt-2">
+        <button
+          onClick={() => goToStep(0)}
+          className="inline-flex items-center gap-1 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        >
+          <ChevronLeft size={16} />
+          Back
+        </button>
+        <button
+          onClick={() => generateMutation.mutate()}
+          disabled={generateMutation.isPending}
+          className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold hover:from-blue-700 hover:to-purple-700 disabled:opacity-60 disabled:cursor-not-allowed transition-all shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30"
+        >
+          {generateMutation.isPending ? (
+            <>
+              <LoadingSpinner size="sm" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <Wand2 size={18} />
+              Generate Pitch
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Generation loading overlay */}
+      <AnimatePresence>
+        {generateMutation.isPending && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-gray-900 rounded-2xl p-8 shadow-2xl max-w-md w-full mx-4 text-center"
+            >
+              <div className="flex justify-center mb-4">
+                <div className="relative">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 animate-pulse" />
+                  <Sparkles
+                    size={24}
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white"
+                  />
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                Generating your pitch
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Our AI is crafting a personalized pitch for{' '}
+                {getCustomerDisplayName(selectedCustomer!)}...
+              </p>
+              <div className="flex justify-center gap-1">
+                {[0, 1, 2].map((i) => (
+                  <motion.div
+                    key={i}
+                    animate={{ opacity: [0.3, 1, 0.3] }}
+                    transition={{
+                      duration: 1.2,
+                      repeat: Infinity,
+                      delay: i * 0.3,
+                    }}
+                    className="w-2 h-2 rounded-full bg-purple-500"
+                  />
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+
+  // ─── Step 3: Review & Refine ────────────────────────────────────────────────
+
+  const renderStep3 = () => {
+    if (!generatedPitch) return null;
+
+    const displayContent = refinedPitch?.content ?? generatedPitch.content;
+    const displayScores = scores ?? generatedPitch.scores ?? null;
+
+    return (
+      <motion.div
+        key="step3"
+        custom={direction}
+        variants={slideVariants}
+        initial="enter"
+        animate="center"
+        exit="exit"
+        transition={{ type: 'tween', duration: 0.3 }}
+        className="space-y-6"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500">
+              <Wand2 size={20} className="text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Your AI-Generated Pitch
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {generatedPitch.title}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => goToStep(1)}
+            className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+          >
+            <ChevronLeft size={16} />
+            Back to Config
+          </button>
+        </div>
+
+        {/* Customer info card */}
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+          <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+            <User size={14} className="text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-900 dark:text-white">
+              {getCustomerDisplayName(selectedCustomer!)}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {getCustomerCompany(selectedCustomer!)}
+              {selectedCustomer!.industry ? ` - ${selectedCustomer!.industry}` : ''}
+            </p>
+          </div>
+          <div className="ml-auto flex items-center gap-2 text-xs text-gray-400">
+            <span className="px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 capitalize">
+              {generatedPitch.pitch_type}
+            </span>
+            <span className="px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 capitalize">
+              {generatedPitch.tone}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main content area */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Pitch Content */}
+            <motion.div
+              variants={fadeUpVariant}
+              initial="hidden"
+              animate="visible"
+              transition={{ delay: 0.1 }}
+              className="relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden"
+            >
+              <div className="absolute top-3 right-3 z-10">
+                <button
+                  onClick={() => handleCopyContent(displayContent)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                >
+                  <Copy size={12} />
+                  Copy
+                </button>
+              </div>
+              <div className="p-6 pt-12 prose prose-sm dark:prose-invert max-w-none">
+                <ReactMarkdown>{displayContent}</ReactMarkdown>
+              </div>
+            </motion.div>
+
+            {/* Scores */}
+            <AnimatePresence>
+              {displayScores && (
+                <motion.div
+                  variants={fadeUpVariant}
+                  initial="hidden"
+                  animate="visible"
+                  transition={{ delay: 0.2 }}
+                  className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6"
+                >
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <BarChart3 size={16} className="text-blue-500" />
+                    Pitch Score Analysis
+                  </h3>
+                  <ScoreDisplay scores={displayScores} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Action Buttons */}
+            <motion.div
+              variants={fadeUpVariant}
+              initial="hidden"
+              animate="visible"
+              transition={{ delay: 0.3 }}
+              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3"
+            >
+              <button
+                onClick={() => scoreMutation.mutate()}
+                disabled={scoreMutation.isPending}
+                className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all text-center"
+              >
+                {scoreMutation.isPending ? (
+                  <RefreshCw size={20} className="text-blue-500 animate-spin" />
+                ) : (
+                  <BarChart3 size={20} className="text-blue-500" />
+                )}
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Score Pitch
+                </span>
+              </button>
+
+              <button
+                onClick={() => setShowRefinement(!showRefinement)}
+                className={`flex flex-col items-center gap-2 px-4 py-4 rounded-xl border transition-all text-center ${
+                  showRefinement
+                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-md'
+                }`}
+              >
+                <RefreshCw size={20} className="text-purple-500" />
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Refine Pitch
+                </span>
+              </button>
+
+              <button
+                onClick={() => abVariantsMutation.mutate()}
+                disabled={abVariantsMutation.isPending}
+                className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-orange-300 dark:hover:border-orange-700 hover:shadow-md transition-all text-center"
+              >
+                {abVariantsMutation.isPending ? (
+                  <RefreshCw size={20} className="text-orange-500 animate-spin" />
+                ) : (
+                  <Target size={20} className="text-orange-500" />
+                )}
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  A/B Variants
+                </span>
+              </button>
+
+              <button
+                onClick={() => subjectLinesMutation.mutate()}
+                disabled={subjectLinesMutation.isPending}
+                className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-teal-300 dark:hover:border-teal-700 hover:shadow-md transition-all text-center"
+              >
+                {subjectLinesMutation.isPending ? (
+                  <RefreshCw size={20} className="text-teal-500 animate-spin" />
+                ) : (
+                  <Mail size={20} className="text-teal-500" />
+                )}
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Subject Lines
+                </span>
+              </button>
+
+              <button
+                onClick={() => followupMutation.mutate()}
+                disabled={followupMutation.isPending}
+                className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all text-center"
+              >
+                {followupMutation.isPending ? (
+                  <RefreshCw size={20} className="text-indigo-500 animate-spin" />
+                ) : (
+                  <Send size={20} className="text-indigo-500" />
+                )}
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Follow-up Seq.
+                </span>
+              </button>
+
+              <button
+                onClick={handleExport}
+                className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-md transition-all text-center"
+              >
+                <Download size={20} className="text-gray-500" />
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Export
+                </span>
+              </button>
+
+              <button
+                onClick={() => approveMutation.mutate()}
+                disabled={
+                  approveMutation.isPending ||
+                  generatedPitch.status === 'approved'
+                }
+                className={`flex flex-col items-center gap-2 px-4 py-4 rounded-xl border transition-all text-center ${
+                  generatedPitch.status === 'approved'
+                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-green-300 dark:hover:border-green-700 hover:shadow-md'
+                }`}
+              >
+                {approveMutation.isPending ? (
+                  <RefreshCw size={20} className="text-green-500 animate-spin" />
+                ) : (
+                  <ThumbsUp
+                    size={20}
+                    className={
+                      generatedPitch.status === 'approved'
+                        ? 'text-green-600'
+                        : 'text-green-500'
+                    }
+                  />
+                )}
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  {generatedPitch.status === 'approved'
+                    ? 'Approved'
+                    : 'Approve'}
+                </span>
+              </button>
+            </motion.div>
+
+            {/* Refinement Panel */}
+            <AnimatePresence>
+              {showRefinement && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="bg-white dark:bg-gray-800 rounded-xl border border-purple-200 dark:border-purple-800 shadow-sm p-6 space-y-4">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                      <MessageSquare size={16} className="text-purple-500" />
+                      Refine Your Pitch
+                    </h3>
+                    <textarea
+                      value={refinementFeedback}
+                      onChange={(e) => setRefinementFeedback(e.target.value)}
+                      placeholder="Describe how you'd like the pitch improved..."
+                      rows={3}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      {QUICK_FEEDBACK.map((chip) => (
+                        <button
+                          key={chip}
+                          onClick={() =>
+                            setRefinementFeedback((prev) =>
+                              prev ? `${prev}, ${chip.toLowerCase()}` : chip
+                            )
+                          }
+                          className="px-3 py-1.5 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+                        >
+                          {chip}
+                        </button>
                       ))}
                     </div>
-                    {generatedPitch.overall_score != null && (
-                      <div className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">Overall Score:</span>
-                        <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{(generatedPitch.overall_score * 100).toFixed(0)}%</span>
+                    <button
+                      onClick={handleApplyRefinement}
+                      disabled={refineMutation.isPending || !refinementFeedback.trim()}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {refineMutation.isPending ? (
+                        <>
+                          <RefreshCw size={14} className="animate-spin" />
+                          Refining...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={14} />
+                          Apply Refinement
+                        </>
+                      )}
+                    </button>
+
+                    {/* Side-by-side comparison */}
+                    {refinedPitch && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <div>
+                          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
+                            Original
+                          </p>
+                          <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-300 max-h-64 overflow-y-auto prose prose-sm dark:prose-invert">
+                            <ReactMarkdown>{generatedPitch.content}</ReactMarkdown>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 mb-2 uppercase tracking-wider">
+                            Refined
+                          </p>
+                          <div className="p-4 rounded-lg bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800 text-sm text-gray-700 dark:text-gray-300 max-h-64 overflow-y-auto prose prose-sm dark:prose-invert">
+                            <ReactMarkdown>{refinedPitch.content}</ReactMarkdown>
+                          </div>
+                        </div>
                       </div>
                     )}
-                  </Card>
-                )}
-
-                {/* Actions */}
-                <Card className="p-4">
-                  <div className="flex flex-wrap gap-3">
-                    <button onClick={() => scoreMutation.mutate(generatedPitch.id)} disabled={scoreMutation.isLoading} className="inline-flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 transition hover:bg-purple-100 disabled:opacity-50 dark:border-purple-800 dark:bg-purple-900/20 dark:text-purple-400">
-                      {scoreMutation.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Target className="h-4 w-4" />} Score Pitch
-                    </button>
-                    <button onClick={() => setShowRefineModal(true)} className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
-                      <RefreshCw className="h-4 w-4" /> Refine Pitch
-                    </button>
-                    <button onClick={() => abVariantsMutation.mutate(generatedPitch)} disabled={abVariantsMutation.isLoading} className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400">
-                      {abVariantsMutation.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <GitBranch className="h-4 w-4" />} A/B Variants
-                    </button>
-                    <button onClick={() => subjectLinesMutation.mutate(generatedPitch)} disabled={subjectLinesMutation.isLoading} className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 transition hover:bg-amber-100 disabled:opacity-50 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
-                      {subjectLinesMutation.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Subject Lines
-                    </button>
-                    <button onClick={() => followUpMutation.mutate(generatedPitch)} disabled={followUpMutation.isLoading} className="inline-flex items-center gap-2 rounded-lg border border-pink-200 bg-pink-50 px-4 py-2 text-sm font-medium text-pink-700 transition hover:bg-pink-100 disabled:opacity-50 dark:border-pink-800 dark:bg-pink-900/20 dark:text-pink-400">
-                      {followUpMutation.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Follow-up Sequence
-                    </button>
-                    <div className="ml-auto flex gap-2">
-                      <button onClick={handleCopy} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400"><Copy className="h-4 w-4" /></button>
-                      <button onClick={handleExport} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400"><Download className="h-4 w-4" /> Export</button>
-                      <button onClick={() => approveMutation.mutate(generatedPitch.id)} disabled={approveMutation.isLoading || generatedPitch.status === 'approved'} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-50">
-                        <ThumbsUp className="h-4 w-4" /> {generatedPitch.status === 'approved' ? 'Approved' : 'Approve'}
-                      </button>
-                    </div>
                   </div>
-                </Card>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-                {/* A/B Variants */}
-                {abVariants && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                    <Card className="p-6">
-                      <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">A/B Variants</h3>
-                      <div className="space-y-4">
-                        {(abVariants.variants ?? abVariants.result?.variants ?? [abVariants]).map((variant: any, idx: number) => (
-                          <div key={idx} className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-                            <p className="mb-2 text-xs font-medium text-indigo-600 dark:text-indigo-400">Variant {String.fromCharCode(65 + idx)}</p>
-                            <div className="prose prose-sm max-w-none dark:prose-invert">
-                              <ReactMarkdown>{variant.content ?? variant.text ?? JSON.stringify(variant)}</ReactMarkdown>
+            {/* A/B Variants Section */}
+            <AnimatePresence>
+              {abVariants && (
+                <motion.div
+                  variants={fadeUpVariant}
+                  initial="hidden"
+                  animate="visible"
+                  className="space-y-3"
+                >
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                    <Target size={16} className="text-orange-500" />
+                    A/B Variants
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    {abVariants.map((variant, index) => (
+                      <div
+                        key={index}
+                        className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-5"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider">
+                            Variant {String.fromCharCode(65 + index)}
+                          </span>
+                          <button
+                            onClick={() =>
+                              handleCopyContent(
+                                typeof variant === 'string'
+                                  ? variant
+                                  : variant.content || JSON.stringify(variant)
+                              )
+                            }
+                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                          >
+                            <Copy size={14} />
+                          </button>
+                        </div>
+                        <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
+                          <ReactMarkdown>
+                            {typeof variant === 'string'
+                              ? variant
+                              : variant.content || JSON.stringify(variant, null, 2)}
+                          </ReactMarkdown>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Subject Lines Section */}
+            <AnimatePresence>
+              {subjectLines && (
+                <motion.div
+                  variants={fadeUpVariant}
+                  initial="hidden"
+                  animate="visible"
+                  className="space-y-3"
+                >
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                    <Mail size={16} className="text-teal-500" />
+                    Subject Line Options
+                  </h3>
+                  <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm divide-y divide-gray-100 dark:divide-gray-700">
+                    {subjectLines.map((line, index) => {
+                      const text =
+                        typeof line === 'string'
+                          ? line
+                          : line.subject_line || line.text || JSON.stringify(line);
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between px-5 py-3 group"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs font-bold text-teal-500 w-6">
+                              {index + 1}.
+                            </span>
+                            <span className="text-sm text-gray-900 dark:text-white">
+                              {text}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => handleCopyContent(text)}
+                            className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-opacity"
+                          >
+                            <Copy size={14} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Follow-up Sequence Section */}
+            <AnimatePresence>
+              {followupSequence && (
+                <motion.div
+                  variants={fadeUpVariant}
+                  initial="hidden"
+                  animate="visible"
+                  className="space-y-3"
+                >
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                    <Send size={16} className="text-indigo-500" />
+                    Follow-up Sequence
+                  </h3>
+                  <div className="space-y-0">
+                    {followupSequence.map((item, index) => {
+                      const day =
+                        typeof item === 'object' ? item.day || index + 1 : index + 1;
+                      const content =
+                        typeof item === 'string'
+                          ? item
+                          : item.content || item.message || JSON.stringify(item);
+                      const subject =
+                        typeof item === 'object' ? item.subject : null;
+
+                      return (
+                        <div key={index} className="flex gap-4">
+                          {/* Timeline indicator */}
+                          <div className="flex flex-col items-center">
+                            <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-xs font-bold text-indigo-600 dark:text-indigo-400 flex-shrink-0">
+                              D{day}
                             </div>
+                            {index < followupSequence.length - 1 && (
+                              <div className="w-0.5 flex-1 bg-indigo-200 dark:bg-indigo-800 my-1" />
+                            )}
                           </div>
-                        ))}
-                      </div>
-                    </Card>
-                  </motion.div>
-                )}
-
-                {/* Subject Lines */}
-                {subjectLines && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                    <Card className="p-6">
-                      <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Subject Lines</h3>
-                      <div className="space-y-2">
-                        {(subjectLines.subject_lines ?? subjectLines.result?.subject_lines ?? [subjectLines]).map((line: any, idx: number) => (
-                          <div key={idx} className="flex items-center justify-between rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-                            <span className="text-sm text-gray-900 dark:text-white">{typeof line === 'string' ? line : line.subject ?? line.text}</span>
-                            <button onClick={() => { navigator.clipboard.writeText(typeof line === 'string' ? line : line.subject ?? line.text ?? ''); toast.success('Copied!'); }} className="text-gray-400 hover:text-gray-600"><Copy className="h-4 w-4" /></button>
-                          </div>
-                        ))}
-                      </div>
-                    </Card>
-                  </motion.div>
-                )}
-
-                {/* Follow-up Sequence */}
-                {followUpSequence && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                    <Card className="p-6">
-                      <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Follow-up Sequence</h3>
-                      <div className="relative space-y-4">
-                        <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700" />
-                        {(followUpSequence.sequence ?? followUpSequence.result?.sequence ?? [followUpSequence]).map((item: any, idx: number) => (
-                          <div key={idx} className="relative flex gap-4 pl-10">
-                            <div className="absolute left-2.5 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-white">{idx + 1}</div>
-                            <div className="flex-1 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-                              {item.day && <p className="mb-1 text-xs font-medium text-indigo-600 dark:text-indigo-400">Day {item.day}</p>}
-                              <div className="prose prose-sm max-w-none dark:prose-invert">
-                                <ReactMarkdown>{item.content ?? item.text ?? JSON.stringify(item)}</ReactMarkdown>
+                          {/* Content */}
+                          <div className="flex-1 pb-6">
+                            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
+                              {subject && (
+                                <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mb-1">
+                                  {subject}
+                                </p>
+                              )}
+                              <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
+                                <ReactMarkdown>{content}</ReactMarkdown>
                               </div>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    </Card>
-                  </motion.div>
-                )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Right Sidebar - Version History */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-4 space-y-4">
+              {/* Quick Stats */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-5 space-y-3">
+                <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Pitch Info
+                </h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Status</span>
+                    <span className="font-medium text-gray-900 dark:text-white capitalize">
+                      {generatedPitch.status}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Version</span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      v{generatedPitch.version}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Type</span>
+                    <span className="font-medium text-gray-900 dark:text-white capitalize">
+                      {generatedPitch.pitch_type}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Tone</span>
+                    <span className="font-medium text-gray-900 dark:text-white capitalize">
+                      {generatedPitch.tone}
+                    </span>
+                  </div>
+                  {generatedPitch.generation_time && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 dark:text-gray-400">Gen Time</span>
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        {generatedPitch.generation_time.toFixed(1)}s
+                      </span>
+                    </div>
+                  )}
+                  {generatedPitch.ai_model_used && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 dark:text-gray-400">Model</span>
+                      <span className="font-medium text-gray-900 dark:text-white text-xs">
+                        {generatedPitch.ai_model_used}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Sidebar */}
-              <div className="space-y-4">
-                <Card className="p-4">
-                  <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white"><History className="h-4 w-4" /> Version History</h3>
+              {/* Version History */}
+              {versionHistory.length > 0 && (
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-5 space-y-3">
+                  <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Clock size={12} />
+                    Version History
+                  </h4>
                   <div className="space-y-2">
-                    {versionHistory.map((version, idx) => (
+                    {versionHistory.map((version, index) => (
                       <button
-                        key={version.id + '-' + idx}
-                        onClick={() => setGeneratedPitch(version)}
-                        className={clsx('w-full rounded-lg border p-3 text-left text-xs transition', generatedPitch.id === version.id ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 hover:bg-gray-50 dark:border-gray-700')}
+                        key={version.id || index}
+                        onClick={() => {
+                          setGeneratedPitch(version);
+                          setRefinedPitch(null);
+                          setScores(version.scores ?? null);
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 text-left transition-colors"
                       >
-                        <p className="font-medium text-gray-900 dark:text-white">v{version.version ?? idx + 1}</p>
-                        <p className="mt-0.5 text-gray-500 dark:text-gray-400">{version.created_at ? format(new Date(version.created_at), 'MMM d, h:mm a') : 'Just now'}</p>
-                        <div className="mt-1"><StatusBadge status={version.status} /></div>
+                        <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-500 dark:text-gray-400">
+                          {index + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-gray-900 dark:text-white truncate">
+                            v{version.version} - {version.pitch_type}
+                          </p>
+                          <p className="text-[10px] text-gray-400">
+                            {new Date(version.updated_at || version.created_at).toLocaleString()}
+                          </p>
+                        </div>
                       </button>
                     ))}
                   </div>
-                </Card>
+                </div>
+              )}
 
-                <Card className="p-4">
-                  <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">Metadata</h3>
-                  <dl className="space-y-2 text-xs">
-                    <div className="flex justify-between"><dt className="text-gray-500 dark:text-gray-400">Type</dt><dd className="capitalize font-medium text-gray-900 dark:text-white">{generatedPitch.pitch_type?.replace(/_/g, ' ')}</dd></div>
-                    <div className="flex justify-between"><dt className="text-gray-500 dark:text-gray-400">Tone</dt><dd className="capitalize font-medium text-gray-900 dark:text-white">{generatedPitch.tone}</dd></div>
-                    <div className="flex justify-between"><dt className="text-gray-500 dark:text-gray-400">Version</dt><dd className="font-medium text-gray-900 dark:text-white">{generatedPitch.version ?? 1}</dd></div>
-                    {generatedPitch.generated_by && <div className="flex justify-between"><dt className="text-gray-500 dark:text-gray-400">Generated By</dt><dd className="font-medium text-gray-900 dark:text-white">{generatedPitch.generated_by}</dd></div>}
-                  </dl>
-                </Card>
-
-                <button onClick={resetWizard} className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                  Generate Another Pitch
+              {/* Navigation */}
+              <div className="space-y-2">
+                <button
+                  onClick={() => navigate(`/pitches/${generatedPitch.id}`)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <FileText size={16} />
+                  View Full Pitch Detail
+                </button>
+                <button
+                  onClick={() => {
+                    setCurrentStep(0);
+                    setDirection(-1);
+                    setSelectedCustomer(null);
+                    setGeneratedPitch(null);
+                    setScores(null);
+                    setRefinedPitch(null);
+                    setAbVariants(null);
+                    setSubjectLines(null);
+                    setFollowupSequence(null);
+                    setRefinementFeedback('');
+                    setShowRefinement(false);
+                    setVersionHistory([]);
+                    setPitchConfig({
+                      type: 'initial',
+                      tone: 'Professional',
+                      templateId: '',
+                      context: '',
+                    });
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-medium hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg shadow-purple-500/20"
+                >
+                  <Sparkles size={16} />
+                  Generate New Pitch
                 </button>
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Loading Overlay */}
-      <AnimatePresence>
-        {generateMutation.isLoading && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-            <Card className="mx-4 max-w-sm p-8 text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-500">
-                <Sparkles className="h-8 w-8 animate-pulse text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Generating Your Pitch</h3>
-              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Our AI agents are researching the customer and crafting a personalized pitch...</p>
-              <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                <motion.div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500" initial={{ width: '0%' }} animate={{ width: '90%' }} transition={{ duration: 8, ease: 'easeOut' }} />
-              </div>
-            </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Refine Modal */}
-      {showRefineModal && (
-        <Modal onClose={() => setShowRefineModal(false)} title="Refine Pitch">
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Provide feedback to refine and improve the pitch.</p>
-            <textarea
-              value={refineFeedback}
-              onChange={(e) => setRefineFeedback(e.target.value)}
-              rows={4}
-              placeholder="E.g., Make it more concise, emphasize ROI benefits, add a stronger call to action..."
-              className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-            />
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setShowRefineModal(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300">Cancel</button>
-              <button
-                onClick={() => refineMutation.mutate({ id: generatedPitch!.id, feedback: refineFeedback })}
-                disabled={!refineFeedback.trim() || refineMutation.isLoading}
-                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-50"
-              >
-                {refineMutation.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Refine
-              </button>
-            </div>
           </div>
-        </Modal>
-      )}
-    </motion.div>
+        </div>
+      </motion.div>
+    );
+  };
+
+  // ─── Render ─────────────────────────────────────────────────────────────────
+
+  return (
+    <div className="max-w-6xl mx-auto">
+      {/* Page Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Pitch Generator
+        </h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Generate AI-powered marketing pitches tailored to your customers
+        </p>
+      </div>
+
+      {/* Step Indicator */}
+      <StepIndicator currentStep={currentStep} />
+
+      {/* Step Content */}
+      <AnimatePresence mode="wait" custom={direction}>
+        {currentStep === 0 && renderStep1()}
+        {currentStep === 1 && renderStep2()}
+        {currentStep === 2 && renderStep3()}
+      </AnimatePresence>
+    </div>
   );
-}
+};
+
+export default PitchGenerator;

@@ -60,7 +60,7 @@ export default function CampaignDetail() {
   });
 
   const addTargetsMutation = useMutation({
-    mutationFn: (customerIds: string[]) => campaignApi.addTargets(id!, { customer_ids: customerIds }),
+    mutationFn: (customerIds: string[]) => campaignApi.addTargets(id!, customerIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['campaign', id] });
       setShowAddTargetsModal(false);
@@ -105,13 +105,13 @@ export default function CampaignDetail() {
         </div>
         <div className="flex gap-2">
           {(campaign.status === 'draft' || campaign.status === 'paused') && (
-            <button onClick={() => launchMutation.mutate()} disabled={launchMutation.isLoading} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-50">
-              {launchMutation.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Launch
+            <button onClick={() => launchMutation.mutate()} disabled={launchMutation.isPending} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-50">
+              {launchMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Launch
             </button>
           )}
           {campaign.status === 'active' && (
-            <button onClick={() => pauseMutation.mutate()} disabled={pauseMutation.isLoading} className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-700 disabled:opacity-50">
-              {pauseMutation.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pause className="h-4 w-4" />} Pause
+            <button onClick={() => pauseMutation.mutate()} disabled={pauseMutation.isPending} className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-700 disabled:opacity-50">
+              {pauseMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pause className="h-4 w-4" />} Pause
             </button>
           )}
         </div>
@@ -188,7 +188,7 @@ export default function CampaignDetail() {
 
       {/* Add Targets Modal */}
       {showAddTargetsModal && (
-        <Modal onClose={() => setShowAddTargetsModal(false)} title="Add Targets">
+        <Modal isOpen={showAddTargetsModal} onClose={() => setShowAddTargetsModal(false)} title="Add Targets">
           <div className="space-y-4">
             <input type="text" placeholder="Search customers..." value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
             <div className="max-h-60 space-y-2 overflow-y-auto">
@@ -204,8 +204,8 @@ export default function CampaignDetail() {
             </div>
             <div className="flex justify-end gap-3">
               <button onClick={() => setShowAddTargetsModal(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 dark:border-gray-700 dark:text-gray-300">Cancel</button>
-              <button onClick={() => addTargetsMutation.mutate(selectedCustomers)} disabled={selectedCustomers.length === 0 || addTargetsMutation.isLoading} className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-                {addTargetsMutation.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Add {selectedCustomers.length} Target{selectedCustomers.length !== 1 ? 's' : ''}
+              <button onClick={() => addTargetsMutation.mutate(selectedCustomers)} disabled={selectedCustomers.length === 0 || addTargetsMutation.isPending} className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                {addTargetsMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Add {selectedCustomers.length} Target{selectedCustomers.length !== 1 ? 's' : ''}
               </button>
             </div>
           </div>
