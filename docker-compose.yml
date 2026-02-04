@@ -1,0 +1,293 @@
+version: "3.9"
+
+services:
+  # ──────────────────────────────────────────────
+  # PostgreSQL 16
+  # ──────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: pitch-postgres
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5464}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-marketing_pitch_db}
+      POSTGRES_USER: ${POSTGRES_USER:-pitch_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pitch_secure_password_2024}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pitch-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pitch_user} -d ${POSTGRES_DB:-marketing_pitch_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ──────────────────────────────────────────────
+  # Redis 7
+  # ──────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: pitch-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6479}:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - pitch-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ──────────────────────────────────────────────
+  # Django API Backend
+  # ──────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pitch-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-8064}:8064"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-pitch_user}:${POSTGRES_PASSWORD:-pitch_secure_password_2024}@postgres:5432/${POSTGRES_DB:-marketing_pitch_db}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    volumes:
+      - ./backend:/app
+      - ./scripts/entrypoint.sh:/entrypoint.sh:ro
+      - backend_static:/app/staticfiles
+      - backend_media:/app/media
+    networks:
+      - pitch-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8064/api/health/"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # ──────────────────────────────────────────────
+  # FastMCP Server
+  # ──────────────────────────────────────────────
+  mcp-server:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile
+    container_name: pitch-mcp-server
+    restart: unless-stopped
+    ports:
+      - "${MCP_PORT:-8165}:8165"
+    env_file:
+      - .env
+    environment:
+      BACKEND_URL: http://backend:8064
+      MCP_PORT: 8165
+    volumes:
+      - ./mcp-server:/app
+    networks:
+      - pitch-network
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8165/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ──────────────────────────────────────────────
+  # Celery Worker
+  # ──────────────────────────────────────────────
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pitch-celery-worker
+    restart: unless-stopped
+    command: celery -A config worker -l info --concurrency=2 -Q default,pitches,analytics
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-pitch_user}:${POSTGRES_PASSWORD:-pitch_secure_password_2024}@postgres:5432/${POSTGRES_DB:-marketing_pitch_db}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    volumes:
+      - ./backend:/app
+    networks:
+      - pitch-network
+    depends_on:
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping --timeout 10 || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 45s
+
+  # ──────────────────────────────────────────────
+  # Celery Beat Scheduler
+  # ──────────────────────────────────────────────
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pitch-celery-beat
+    restart: unless-stopped
+    command: celery -A config beat -l info --schedule=/tmp/celerybeat-schedule --pidfile=/tmp/celerybeat.pid
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-pitch_user}:${POSTGRES_PASSWORD:-pitch_secure_password_2024}@postgres:5432/${POSTGRES_DB:-marketing_pitch_db}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    volumes:
+      - ./backend:/app
+    networks:
+      - pitch-network
+    depends_on:
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping --timeout 10 || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 45s
+
+  # ──────────────────────────────────────────────
+  # Celery Flower Monitoring
+  # ──────────────────────────────────────────────
+  flower:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pitch-flower
+    restart: unless-stopped
+    command: celery -A config flower --port=5555 --broker_api=redis://redis:6379/1
+    ports:
+      - "${FLOWER_PORT:-5564}:5555"
+    env_file:
+      - .env
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    volumes:
+      - flower_data:/app/flower_data
+    networks:
+      - pitch-network
+    depends_on:
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5555/"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ──────────────────────────────────────────────
+  # Node.js BFF (Backend-for-Frontend)
+  # ──────────────────────────────────────────────
+  bff:
+    build:
+      context: ./bff
+      dockerfile: Dockerfile
+    container_name: pitch-bff
+    restart: unless-stopped
+    ports:
+      - "${BFF_PORT:-4064}:4064"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 4064
+      BACKEND_URL: http://backend:8064
+      MCP_SERVER_URL: http://mcp-server:8165/mcp
+    volumes:
+      - ./bff:/app
+      - /app/node_modules
+    networks:
+      - pitch-network
+    depends_on:
+      backend:
+        condition: service_healthy
+      mcp-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4064/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ──────────────────────────────────────────────
+  # React Frontend (Nginx)
+  # ──────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_BFF_URL: http://172.168.1.95:4064
+        REACT_APP_API_URL: /api
+    container_name: pitch-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3064}:3064"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - pitch-network
+    depends_on:
+      bff:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3064/"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  backend_static:
+    driver: local
+  backend_media:
+    driver: local
+  flower_data:
+    driver: local
+
+networks:
+  pitch-network:
+    driver: bridge
+    name: pitch-network
