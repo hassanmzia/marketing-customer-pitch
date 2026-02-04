@@ -7,6 +7,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const CustomerList = lazy(() => import('@/pages/customers/CustomerList'));
 const CustomerDetail = lazy(() => import('@/pages/customers/CustomerDetail'));
+const CustomerCreate = lazy(() => import('@/pages/customers/CustomerCreate'));
 const PitchList = lazy(() => import('@/pages/pitches/PitchList'));
 const PitchGenerator = lazy(() => import('@/pages/pitches/PitchGenerator'));
 const PitchDetail = lazy(() => import('@/pages/pitches/PitchDetail'));
@@ -31,6 +32,7 @@ const App: React.FC = () => {
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/customers" element={<CustomerList />} />
+          <Route path="/customers/new" element={<CustomerCreate />} />
           <Route path="/customers/:id" element={<CustomerDetail />} />
           <Route path="/pitches" element={<PitchList />} />
           <Route path="/pitches/new" element={<PitchGenerator />} />
