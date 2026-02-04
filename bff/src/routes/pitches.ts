@@ -14,6 +14,26 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
+// GET /api/v1/pitches/templates - List pitch templates
+router.get('/templates', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await backendProxy.get('/api/v1/pitches/templates/', req.query as Record<string, unknown>);
+    res.status(result.status).json(result.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/v1/pitches/templates - Create pitch template
+router.post('/templates', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await backendProxy.post('/api/v1/pitches/templates/', req.body);
+    res.status(result.status).json(result.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // GET /api/v1/pitches/:id - Pitch detail
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
