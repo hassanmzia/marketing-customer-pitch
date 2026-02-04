@@ -92,9 +92,14 @@ def orchestrate_pitch(request):
     """
     Trigger the full multi-agent pitch orchestration pipeline.
 
-    This endpoint starts the complete flow:
-    Research -> Generate -> Score -> Refine (if needed) -> Final pitch
+    Creates an AgentExecution record so the frontend can poll for progress.
+    Tries synchronous orchestration first, falls back to Celery async.
     """
+    import logging
+    from django.utils import timezone
+
+    logger = logging.getLogger(__name__)
+
     serializer = OrchestrateSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
@@ -112,15 +117,63 @@ def orchestrate_pitch(request):
             status=status.HTTP_404_NOT_FOUND,
         )
 
-    task = async_orchestrate_pipeline.delay(customer_id, campaign_id)
+    # Get or create the orchestrator agent config
+    orchestrator_config, _ = AgentConfig.objects.get_or_create(
+        agent_type='orchestrator',
+        defaults={
+            'name': 'Pipeline Orchestrator',
+            'description': 'Orchestrates the full pitch generation pipeline',
+            'is_active': True,
+            'config': {},
+        },
+    )
+
+    # Create an execution record the frontend can poll
+    execution = AgentExecution.objects.create(
+        agent_config=orchestrator_config,
+        input_data={
+            'customer_id': customer_id,
+            'campaign_id': campaign_id,
+            'task': request.data.get('task', 'generate_pitch'),
+        },
+        status='running',
+        started_at=timezone.now(),
+    )
+
+    # Try synchronous orchestration, fall back to async
+    try:
+        from .services import A2AService
+        a2a_service = A2AService()
+        result = a2a_service.orchestrate_pipeline(customer_id, campaign_id)
+
+        execution.status = 'completed'
+        execution.output_data = result if isinstance(result, dict) else {'result': str(result)}
+        execution.completed_at = timezone.now()
+        execution.save(update_fields=['status', 'output_data', 'completed_at'])
+    except Exception as e:
+        logger.warning('Synchronous orchestration failed, trying async: %s', e)
+        try:
+            task = async_orchestrate_pipeline.delay(customer_id, campaign_id)
+            execution.output_data = {'celery_task_id': task.id}
+            execution.save(update_fields=['output_data'])
+        except Exception as async_err:
+            logger.warning('Async orchestration also failed: %s', async_err)
+            execution.status = 'failed'
+            execution.error_message = str(e)
+            execution.completed_at = timezone.now()
+            execution.save(update_fields=['status', 'error_message', 'completed_at'])
+
+    exec_data = AgentExecutionSerializer(execution).data
 
     return Response(
         {
+            'id': str(execution.id),
+            'execution_id': str(execution.id),
             'message': f'Orchestration pipeline started for {customer.name}',
-            'task_id': task.id,
             'customer_id': customer_id,
             'campaign_id': campaign_id,
-            'status': 'pending',
+            'status': execution.status,
+            **exec_data,
         },
         status=status.HTTP_202_ACCEPTED,
     )

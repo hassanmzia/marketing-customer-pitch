@@ -1589,7 +1589,7 @@ const PitchGenerator: React.FC = () => {
               {/* Navigation */}
               <div className="space-y-2">
                 <button
-                  onClick={() => navigate(`/pitches/${generatedPitch.id}`)}
+                  onClick={() => generatedPitch.id && navigate(`/pitches/${generatedPitch.id}`)}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   <FileText size={16} />

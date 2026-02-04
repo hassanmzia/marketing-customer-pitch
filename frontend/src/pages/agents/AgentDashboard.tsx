@@ -79,11 +79,31 @@ export default function AgentDashboard() {
       setPipelineRunning(true);
       setPipelineLogs([{ message: 'Pipeline orchestration started...', timestamp: new Date().toISOString(), status: 'running' }]);
 
+      const executionId = data.id ?? data.execution_id;
+
+      // If the pipeline already completed synchronously, show result immediately
+      if (data.status === 'completed' || data.status === 'failed') {
+        setPipelineRunning(false);
+        setPipelineLogs(data.output_data?.steps ?? data.logs ?? [{ message: `Pipeline ${data.status}`, timestamp: new Date().toISOString(), status: data.status }]);
+        queryClient.invalidateQueries({ queryKey: ['agent-executions'] });
+        queryClient.invalidateQueries({ queryKey: ['a2a-messages'] });
+        toast.success(data.status === 'completed' ? 'Pipeline completed!' : 'Pipeline failed');
+        return;
+      }
+
+      // Only poll if we have a valid execution ID
+      if (!executionId) {
+        setPipelineRunning(false);
+        setPipelineLogs([{ message: 'Pipeline finished (no execution tracking available)', timestamp: new Date().toISOString(), status: 'completed' }]);
+        queryClient.invalidateQueries({ queryKey: ['agent-executions'] });
+        return;
+      }
+
       // Start polling
       if (pollingRef.current) clearInterval(pollingRef.current);
       pollingRef.current = setInterval(async () => {
         try {
-          const status = await agentApi.getExecution(data.id ?? data.execution_id) as any;
+          const status = await agentApi.getExecution(executionId) as any;
           setPipelineLogs(status.logs ?? status.steps ?? []);
           if (status.status === 'completed' || status.status === 'failed') {
             setPipelineRunning(false);
