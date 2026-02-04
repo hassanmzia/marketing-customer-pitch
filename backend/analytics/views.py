@@ -3,6 +3,7 @@ Analytics views.
 """
 from datetime import timedelta
 
+from django.db import models
 from django.db.models import Avg, Count, Sum
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
@@ -100,7 +101,20 @@ def dashboard(request):
         'efficiency_trend': None,
         'customer_trend': None,
         'campaign_trend': None,
-        'campaign_roi': [],
+        'campaign_roi': [
+            {
+                'name': c.name,
+                'value': c.targets.count(),
+            }
+            for c in Campaign.objects.filter(is_active=True)[:10]
+            if c.targets.count() > 0
+        ] or [
+            {
+                'name': c.name,
+                'value': 1,
+            }
+            for c in Campaign.objects.filter(is_active=True)[:5]
+        ],
         'engagement_heatmap': [],
         # Nested data still available
         'summary': {
@@ -247,9 +261,11 @@ class AgentPerformanceViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'], url_path='agent-comparison')
     def agent_comparison(self, request):
         """Compare performance across all agents."""
+        from agents.models import AgentExecution
+
         period = request.query_params.get('period', 'monthly')
 
-        # Get latest date for each agent
+        # Try the AgentPerformance table first
         latest_metrics = AgentPerformance.objects.filter(
             is_active=True,
             period=period,
@@ -279,6 +295,35 @@ class AgentPerformanceViewSet(viewsets.ReadOnlyModelViewSet):
                 'avg_duration': round(metric['avg_duration'] or 0, 2),
                 'avg_quality_score': round(metric['avg_quality'] or 0, 3),
             })
+
+        # Fallback: compute from AgentExecution records if no
+        # pre-aggregated AgentPerformance rows exist.
+        if not comparison:
+            exec_metrics = (
+                AgentExecution.objects
+                .filter(agent_config__isnull=False)
+                .values('agent_config__name', 'agent_config__agent_type')
+                .annotate(
+                    total=Count('id'),
+                    successful=Count('id', filter=models.Q(status='completed')),
+                    avg_tokens=Avg('tokens_used'),
+                )
+                .order_by('-total')
+            )
+            for m in exec_metrics:
+                total = m['total'] or 0
+                successful = m['successful'] or 0
+                comparison.append({
+                    'name': m['agent_config__name'],
+                    'agent_name': m['agent_config__name'],
+                    'agent_type': m['agent_config__agent_type'],
+                    'total_executions': total,
+                    'successful_executions': successful,
+                    'success_rate': successful / total if total > 0 else 0,
+                    'avg_tokens': round(m['avg_tokens'] or 0, 1),
+                    'avg_duration': 0,
+                    'avg_quality_score': 0,
+                })
 
         return Response({
             'period': period,
