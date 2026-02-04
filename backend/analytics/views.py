@@ -93,6 +93,7 @@ def dashboard(request):
         'total_pitches': total_pitches,
         'active_campaigns': active_campaigns,
         'avg_score': avg_score_val,
+        'avg_pitch_score': avg_score_val,
         'conversion_rate': round(avg_response_rate, 4),
         'agent_efficiency': agent_success_rate,
         'pitch_trend': None,
