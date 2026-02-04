@@ -1,4 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import axios from 'axios';
+import config from '../config.js';
 import backendProxy from '../services/backendProxy.js';
 import wsService from '../services/websocket.js';
 
@@ -68,8 +70,14 @@ router.post('/orchestrate', async (req: Request, res: Response, next: NextFuncti
       });
     }
 
-    // Forward the full request body to backend
-    const result = await backendProxy.postAI('/api/v1/agents/orchestrate/', req.body);
+    // Forward the full request body to backend with extended timeout.
+    // Orchestration runs multiple sequential LLM calls (research, generate,
+    // score, refine) so 120 s is not enough – use 5 minutes.
+    const result = await axios.post(
+      `${config.backendUrl}/api/v1/agents/orchestrate/`,
+      req.body,
+      { timeout: 300_000, headers: { 'Content-Type': 'application/json' } },
+    );
 
     const responseData = result.data as Record<string, unknown>;
 
