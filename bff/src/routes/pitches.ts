@@ -36,50 +36,10 @@ router.post('/templates', async (req: Request, res: Response, next: NextFunction
   }
 });
 
-// GET /api/v1/pitches/:id - Pitch detail
-router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const result = await backendProxy.get(`/api/v1/pitches/${req.params.id}/`);
-    res.status(result.status).json(result.data);
-  } catch (error) {
-    next(error);
-  }
-});
-
 // POST /api/v1/pitches - Create pitch
 router.post('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await backendProxy.post('/api/v1/pitches/', req.body);
-    res.status(result.status).json(result.data);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// PUT /api/v1/pitches/:id - Update pitch
-router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const result = await backendProxy.put(`/api/v1/pitches/${req.params.id}/`, req.body);
-    res.status(result.status).json(result.data);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// PATCH /api/v1/pitches/:id - Partially update pitch
-router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const result = await backendProxy.patch(`/api/v1/pitches/${req.params.id}/`, req.body);
-    res.status(result.status).json(result.data);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// DELETE /api/v1/pitches/:id - Delete pitch
-router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const result = await backendProxy.delete(`/api/v1/pitches/${req.params.id}/`);
     res.status(result.status).json(result.data);
   } catch (error) {
     next(error);
@@ -129,6 +89,55 @@ router.post('/generate', async (req: Request, res: Response, next: NextFunction)
   }
 });
 
+// POST /api/v1/pitches/compare - Compare multiple pitches
+router.post('/compare', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await backendProxy.post('/api/v1/pitches/compare/', req.body);
+    res.status(result.status).json(result.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// --- Routes with /:id/sub-path MUST come before the bare /:id routes ---
+
+// GET /api/v1/pitches/:id/export - Export pitch
+router.get('/:id/export', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const format = req.query.format ?? 'text';
+
+    // PDF requires binary proxy with arraybuffer response
+    if (format === 'pdf') {
+      const pdfRes = await axios.get(
+        `${config.backendUrl}/api/v1/pitches/${req.params.id}/export/`,
+        { params: { format: 'pdf' }, responseType: 'arraybuffer', timeout: 30_000 },
+      );
+      res.set('Content-Type', 'application/pdf');
+      res.set('Content-Disposition', pdfRes.headers['content-disposition'] ?? 'attachment; filename="pitch.pdf"');
+      res.status(200).send(Buffer.from(pdfRes.data));
+      return;
+    }
+
+    const result = await backendProxy.get(
+      `/api/v1/pitches/${req.params.id}/export/`,
+      req.query as Record<string, unknown>,
+    );
+    res.status(result.status).json(result.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/v1/pitches/:id/history - Pitch version history
+router.get('/:id/history', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await backendProxy.get(`/api/v1/pitches/${req.params.id}/history/`);
+    res.status(result.status).json(result.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST /api/v1/pitches/:id/score - Score a pitch
 router.post('/:id/score', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -164,47 +173,42 @@ router.post('/:id/refine', async (req: Request, res: Response, next: NextFunctio
   }
 });
 
-// GET /api/v1/pitches/:id/history - Pitch version history
-router.get('/:id/history', async (req: Request, res: Response, next: NextFunction) => {
+// --- Bare /:id routes LAST (catch-all for detail/update/delete) ---
+
+// GET /api/v1/pitches/:id - Pitch detail
+router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await backendProxy.get(`/api/v1/pitches/${req.params.id}/history/`);
+    const result = await backendProxy.get(`/api/v1/pitches/${req.params.id}/`);
     res.status(result.status).json(result.data);
   } catch (error) {
     next(error);
   }
 });
 
-// POST /api/v1/pitches/compare - Compare multiple pitches
-router.post('/compare', async (req: Request, res: Response, next: NextFunction) => {
+// PUT /api/v1/pitches/:id - Update pitch
+router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await backendProxy.post('/api/v1/pitches/compare/', req.body);
+    const result = await backendProxy.put(`/api/v1/pitches/${req.params.id}/`, req.body);
     res.status(result.status).json(result.data);
   } catch (error) {
     next(error);
   }
 });
 
-// GET /api/v1/pitches/:id/export - Export pitch
-router.get('/:id/export', async (req: Request, res: Response, next: NextFunction) => {
+// PATCH /api/v1/pitches/:id - Partially update pitch
+router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const format = req.query.format ?? 'text';
+    const result = await backendProxy.patch(`/api/v1/pitches/${req.params.id}/`, req.body);
+    res.status(result.status).json(result.data);
+  } catch (error) {
+    next(error);
+  }
+});
 
-    // PDF requires binary proxy with arraybuffer response
-    if (format === 'pdf') {
-      const pdfRes = await axios.get(
-        `${config.backendUrl}/api/v1/pitches/${req.params.id}/export/`,
-        { params: { format: 'pdf' }, responseType: 'arraybuffer', timeout: 30_000 },
-      );
-      res.set('Content-Type', 'application/pdf');
-      res.set('Content-Disposition', pdfRes.headers['content-disposition'] ?? 'attachment; filename="pitch.pdf"');
-      res.status(200).send(Buffer.from(pdfRes.data));
-      return;
-    }
-
-    const result = await backendProxy.get(
-      `/api/v1/pitches/${req.params.id}/export/`,
-      req.query as Record<string, unknown>,
-    );
+// DELETE /api/v1/pitches/:id - Delete pitch
+router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await backendProxy.delete(`/api/v1/pitches/${req.params.id}/`);
     res.status(result.status).json(result.data);
   } catch (error) {
     next(error);
