@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import re
+from contextlib import asynccontextmanager
 
 import psycopg2
 import uvicorn
@@ -692,12 +693,31 @@ if __name__ == "__main__":
     # Get the MCP ASGI app
     mcp_app = mcp.streamable_http_app()
 
+    # Starlette does not propagate lifespans to mounted sub-apps, so we
+    # must explicitly start the MCP session manager's task group here.
+    # The session_manager lives on the FastMCP instance after calling
+    # streamable_http_app(), or on the returned app object itself.
+    _sm = getattr(mcp, "session_manager", None) or getattr(mcp_app, "session_manager", None)
+    if _sm is None:
+        logger.warning("Could not find session_manager on FastMCP or mcp_app — "
+                        "task group may not initialize correctly")
+
+    @asynccontextmanager
+    async def lifespan(app):
+        if _sm is not None:
+            async with _sm.run():
+                logger.info("MCP session manager started")
+                yield
+        else:
+            yield
+
     # Wrap in a Starlette app that adds /health
     app = Starlette(
         routes=[
             Route("/health", health_check),
             Mount("/", app=mcp_app),
-        ]
+        ],
+        lifespan=lifespan,
     )
 
     uvicorn.run(app, host="0.0.0.0", port=8165)
