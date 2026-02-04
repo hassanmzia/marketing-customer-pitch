@@ -185,6 +185,22 @@ router.post('/compare', async (req: Request, res: Response, next: NextFunction) 
 // GET /api/v1/pitches/:id/export - Export pitch
 router.get('/:id/export', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const format = req.query.format ?? 'text';
+
+    // PDF requires binary proxy with arraybuffer response
+    if (format === 'pdf') {
+      const axios = (await import('axios')).default;
+      const config = (await import('../config.js')).default;
+      const pdfRes = await axios.get(
+        `${config.backendUrl}/api/v1/pitches/${req.params.id}/export/`,
+        { params: { format: 'pdf' }, responseType: 'arraybuffer', timeout: 30_000 },
+      );
+      res.set('Content-Type', 'application/pdf');
+      res.set('Content-Disposition', pdfRes.headers['content-disposition'] ?? 'attachment; filename="pitch.pdf"');
+      res.status(200).send(Buffer.from(pdfRes.data));
+      return;
+    }
+
     const result = await backendProxy.get(
       `/api/v1/pitches/${req.params.id}/export/`,
       req.query as Record<string, unknown>,

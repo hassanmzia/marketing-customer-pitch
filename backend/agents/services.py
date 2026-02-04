@@ -786,23 +786,60 @@ class A2AService:
                 from_agent=orchestrator,
                 to_agent=agents['research'],
                 message_type='request',
-                payload={'customer_id': str(customer_id)},
+                payload={
+                    'customer_id': str(customer_id),
+                    'customer_name': customer.name,
+                    'company': customer.company,
+                },
                 correlation_id=correlation_id,
             )
 
         try:
             research_result = self.agent_service.research_customer(str(customer_id))
+            # Send response message back
+            if orchestrator and agents.get('research'):
+                research_source = research_result.get('source', 'unknown')
+                self.send_message(
+                    from_agent=agents['research'],
+                    to_agent=orchestrator,
+                    message_type='response',
+                    payload={
+                        'status': 'completed',
+                        'source': research_source,
+                        'summary': f'Research completed for {customer.company} via {research_source}',
+                    },
+                    correlation_id=correlation_id,
+                    parent_message=research_msg,
+                )
+            research_source = research_result.get('source', 'unknown')
             pipeline_result['steps'].append({
                 'step': 'research',
                 'status': 'completed',
+                'message': f'Researched {customer.company} via {research_source}',
+                'timestamp': timezone.now().isoformat(),
                 'message_id': str(research_msg.id) if research_msg else None,
             })
         except Exception as e:
             logger.warning(f'Research step failed: {e}. Continuing with basic context.')
             research_result = {}
+            if orchestrator and agents.get('research'):
+                self.send_message(
+                    from_agent=agents['research'],
+                    to_agent=orchestrator,
+                    message_type='response',
+                    payload={
+                        'status': 'failed',
+                        'error': str(e),
+                        'summary': f'Research failed for {customer.company}: {e}',
+                    },
+                    correlation_id=correlation_id,
+                    parent_message=research_msg,
+                )
             pipeline_result['steps'].append({
                 'step': 'research',
                 'status': 'failed',
+                'message': f'Research failed for {customer.company}: {e}',
+                'timestamp': timezone.now().isoformat(),
                 'error': str(e),
             })
 
@@ -849,9 +886,27 @@ class A2AService:
             metadata=pitch_result.get('metadata', {}),
         )
 
+        # Send response message back
+        if orchestrator and agents.get('pitch_generator'):
+            self.send_message(
+                from_agent=agents['pitch_generator'],
+                to_agent=orchestrator,
+                message_type='response',
+                payload={
+                    'status': 'completed',
+                    'pitch_id': str(pitch.id),
+                    'title': pitch_result.get('title', ''),
+                    'summary': f'Generated pitch "{pitch_result.get("title", "")}" for {customer.company}',
+                },
+                correlation_id=correlation_id,
+                parent_message=gen_msg,
+            )
+
         pipeline_result['steps'].append({
             'step': 'generate',
             'status': 'completed',
+            'message': f'Generated pitch: "{pitch_result.get("title", "Untitled")}"',
+            'timestamp': timezone.now().isoformat(),
             'pitch_id': str(pitch.id),
             'message_id': str(gen_msg.id) if gen_msg else None,
         })
@@ -887,9 +942,31 @@ class A2AService:
         pitch.save(update_fields=['scores', 'status', 'updated_at'])
 
         avg_score = pitch.average_score or 0.0
+
+        # Send response message back with score summary
+        if orchestrator and agents.get('scorer'):
+            score_parts = [f'{dim}: {s:.0%}' for dim, s in pitch.scores.items()]
+            self.send_message(
+                from_agent=agents['scorer'],
+                to_agent=orchestrator,
+                message_type='response',
+                payload={
+                    'status': 'completed',
+                    'pitch_id': str(pitch.id),
+                    'average_score': avg_score,
+                    'scores': pitch.scores,
+                    'summary': f'Scored pitch — Average: {avg_score:.0%} ({", ".join(score_parts)})',
+                },
+                correlation_id=correlation_id,
+                parent_message=score_msg,
+            )
+
+        score_details = ', '.join(f'{dim}: {s:.0%}' for dim, s in pitch.scores.items())
         pipeline_result['steps'].append({
             'step': 'score',
             'status': 'completed',
+            'message': f'Scored pitch — Average: {avg_score:.0%} ({score_details})',
+            'timestamp': timezone.now().isoformat(),
             'scores': pitch.scores,
             'average_score': avg_score,
             'message_id': str(score_msg.id) if score_msg else None,
@@ -966,9 +1043,17 @@ class A2AService:
             avg_score = refined_pitch.average_score or 0.0
             pitch = refined_pitch  # Update reference for next iteration
 
+            refine_score_details = ', '.join(
+                f'{dim}: {s:.0%}' for dim, s in refined_pitch.scores.items()
+            )
             pipeline_result['steps'].append({
                 'step': f'refine_{refinement_count}',
                 'status': 'completed',
+                'message': (
+                    f'Refinement #{refinement_count}: '
+                    f'New score {avg_score:.0%} ({refine_score_details})'
+                ),
+                'timestamp': timezone.now().isoformat(),
                 'pitch_id': str(refined_pitch.id),
                 'scores': refined_pitch.scores,
                 'average_score': avg_score,

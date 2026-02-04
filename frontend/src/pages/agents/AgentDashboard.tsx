@@ -34,12 +34,31 @@ function formatMessageContent(msg: any): string {
   const c = msg.content ?? msg.payload;
   if (!c || typeof c !== 'object') return typeof c === 'string' ? c : JSON.stringify(c);
 
+  // If the backend provides a human-readable summary, use it
+  if (c.summary && typeof c.summary === 'string') return c.summary;
+
   const type = msg.message_type;
   const toAgent = msg.to_agent_name ?? '';
 
+  // Response messages
+  if (type === 'response') {
+    if (c.average_score !== undefined) {
+      const pct = `${Math.round(Number(c.average_score) * 100)}%`;
+      return `Scored pitch — Average: ${pct}`;
+    }
+    if (c.title) return `Generated pitch: "${c.title}"`;
+    if (c.source) return `Research completed via ${c.source}`;
+    if (c.status === 'failed' && c.error) return `Failed: ${String(c.error).substring(0, 120)}`;
+    if (c.result || c.output) {
+      const result = c.result ?? c.output;
+      return typeof result === 'string' ? result.substring(0, 200) : `Result: ${JSON.stringify(result).substring(0, 180)}`;
+    }
+  }
+
   // Research requests
-  if (toAgent.toLowerCase().includes('research') && c.customer_id) {
-    return `Requesting customer research for ID ${String(c.customer_id).substring(0, 8)}...`;
+  if (toAgent.toLowerCase().includes('research') && (c.customer_name || c.customer_id)) {
+    const name = c.customer_name ?? c.company ?? `ID ${String(c.customer_id).substring(0, 8)}...`;
+    return `Research customer: ${name}${c.company && c.customer_name ? ` (${c.company})` : ''}`;
   }
 
   // Pitch generation delegate
@@ -62,14 +81,6 @@ function formatMessageContent(msg: any): string {
     return `Refine pitch${c.pitch_id ? ' ' + String(c.pitch_id).substring(0, 8) + '...' : ''}${feedback}`;
   }
 
-  // Response messages with result/output
-  if (type === 'response' && (c.result || c.output || c.score !== undefined)) {
-    if (c.score !== undefined) return `Score: ${c.score}${c.feedback ? ' — ' + String(c.feedback).substring(0, 100) : ''}`;
-    const result = c.result ?? c.output;
-    if (typeof result === 'string') return result.substring(0, 200);
-    return `Result: ${JSON.stringify(result).substring(0, 180)}`;
-  }
-
   // Fallback: show keys summary and first string value
   const keys = Object.keys(c);
   const firstStr = keys.find(k => typeof c[k] === 'string' && String(c[k]).length > 10);
@@ -77,6 +88,27 @@ function formatMessageContent(msg: any): string {
     return `${keys.join(', ')}: ${String(c[firstStr]).substring(0, 150)}${String(c[firstStr]).length > 150 ? '...' : ''}`;
   }
   return keys.length > 0 ? `Fields: ${keys.join(', ')}` : JSON.stringify(c).substring(0, 200);
+}
+
+const STEP_LABELS: Record<string, string> = {
+  research: 'Research',
+  generate: 'Pitch Generation',
+  score: 'Scoring',
+  orchestration: 'Orchestration',
+};
+
+function formatLogStep(log: any): string {
+  if (log.message) return log.message;
+  const step = log.step ?? '';
+  const label = STEP_LABELS[step] ?? (step.startsWith('refine') ? `Refinement #${step.split('_')[1] ?? ''}` : step);
+  if (log.average_score !== undefined) {
+    const pct = `${Math.round(Number(log.average_score) * 100)}%`;
+    const dims = log.scores ? Object.entries(log.scores).map(([k, v]) => `${k}: ${Math.round(Number(v) * 100)}%`).join(', ') : '';
+    return `${label} — Average: ${pct}${dims ? ` (${dims})` : ''}`;
+  }
+  if (log.pitch_id && step === 'generate') return `${label}: created pitch ${String(log.pitch_id).substring(0, 8)}...`;
+  if (log.error) return `${label} failed: ${String(log.error).substring(0, 100)}`;
+  return `${label} ${log.status ?? ''}`.trim();
 }
 
 const MESSAGE_TYPE_LABELS: Record<string, { label: string; color: string }> = {
@@ -283,7 +315,7 @@ export default function AgentDashboard() {
                 <div key={idx} className="flex items-start gap-2 text-xs">
                   <span className={clsx('mt-0.5 h-2 w-2 flex-shrink-0 rounded-full', log.status === 'completed' ? 'bg-emerald-500' : log.status === 'failed' ? 'bg-red-500' : log.status === 'running' ? 'bg-amber-500 animate-pulse' : 'bg-gray-400')} />
                   <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">{log.timestamp ? format(new Date(log.timestamp), 'HH:mm:ss') : ''}</span>
-                  <span className="text-gray-700 dark:text-gray-300">{log.message ?? log.step ?? JSON.stringify(log)}</span>
+                  <span className="text-gray-700 dark:text-gray-300">{formatLogStep(log)}</span>
                 </div>
               ))}
             </div>

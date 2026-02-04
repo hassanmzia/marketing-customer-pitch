@@ -71,7 +71,10 @@ export default function PitchDetail() {
     onError: () => toast.error('Failed to delete pitch'),
   });
 
-  const handleExport = () => {
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
+
+  const handleExportMd = () => {
     if (!pitch) return;
     const blob = new Blob([pitch.content ?? ''], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
@@ -80,7 +83,28 @@ export default function PitchDetail() {
     a.download = `${pitch.title ?? 'pitch'}.md`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('Pitch exported!');
+    setShowExportMenu(false);
+    toast.success('Exported as Markdown!');
+  };
+
+  const handleExportPdf = async () => {
+    if (!pitch || !id) return;
+    setExportingPdf(true);
+    try {
+      const blob = await pitchApi.export(id, 'pdf');
+      const url = URL.createObjectURL(blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(pitch.title ?? 'pitch').replace(/\s+/g, '_')}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setShowExportMenu(false);
+      toast.success('Exported as PDF!');
+    } catch {
+      toast.error('Failed to export PDF');
+    } finally {
+      setExportingPdf(false);
+    }
   };
 
   if (!id || id === 'undefined') {
@@ -125,9 +149,21 @@ export default function PitchDetail() {
           <button onClick={() => scoreMutation.mutate()} disabled={scoreMutation.isPending} className="inline-flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 transition hover:bg-purple-100 disabled:opacity-50 dark:border-purple-800 dark:bg-purple-900/20 dark:text-purple-400">
             {scoreMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Target className="h-4 w-4" />} Re-score
           </button>
-          <button onClick={handleExport} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300">
-            <Download className="h-4 w-4" /> Export
-          </button>
+          <div className="relative">
+            <button onClick={() => setShowExportMenu(!showExportMenu)} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300">
+              {exportingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Export
+            </button>
+            {showExportMenu && (
+              <div className="absolute right-0 z-10 mt-1 w-44 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                <button onClick={handleExportMd} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700">
+                  <FileText className="h-4 w-4" /> Markdown (.md)
+                </button>
+                <button onClick={handleExportPdf} disabled={exportingPdf} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-gray-700">
+                  {exportingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} PDF (.pdf)
+                </button>
+              </div>
+            )}
+          </div>
           <button onClick={() => { if (confirm('Delete this pitch?')) deleteMutation.mutate(); }} className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 dark:border-red-800 dark:text-red-400">
             <Trash2 className="h-4 w-4" /> Delete
           </button>
