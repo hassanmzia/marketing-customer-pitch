@@ -97,7 +97,7 @@ export default function Dashboard() {
             key: 'score',
             label: 'Avg Pitch Score',
             value: dashboardData.avg_pitch_score
-              ? `${(dashboardData.avg_pitch_score * 100).toFixed(0)}%`
+              ? `${(Number(dashboardData.avg_pitch_score) * 100).toFixed(0)}%`
               : 'N/A',
             trend: dashboardData.score_trend,
           },
@@ -243,7 +243,7 @@ export default function Dashboard() {
                         <td className="py-3">
                           {pitch.overall_score != null ? (
                             <span className="font-semibold text-indigo-600 dark:text-indigo-400">
-                              {(pitch.overall_score * 100).toFixed(0)}%
+                              {(Number(pitch.overall_score) * 100).toFixed(0)}%
                             </span>
                           ) : (
                             <span className="text-gray-400">--</span>

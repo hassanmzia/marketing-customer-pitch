@@ -156,7 +156,7 @@ export default function PitchDetail() {
                   <div key={score.label}>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">{score.label}</span>
-                      <span className="font-bold text-gray-900 dark:text-white">{score.value != null ? `${(score.value * 100).toFixed(0)}%` : '--'}</span>
+                      <span className="font-bold text-gray-900 dark:text-white">{score.value != null ? `${(Number(score.value) * 100).toFixed(0)}%` : '--'}</span>
                     </div>
                     <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
                       <motion.div className={clsx('h-full rounded-full', score.color)} initial={{ width: 0 }} animate={{ width: `${(score.value ?? 0) * 100}%` }} transition={{ duration: 1, ease: 'easeOut' }} />
@@ -167,7 +167,7 @@ export default function PitchDetail() {
               {pitch.overall_score != null && (
                 <div className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Overall:</span>
-                  <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{(pitch.overall_score * 100).toFixed(0)}%</span>
+                  <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{(Number(pitch.overall_score) * 100).toFixed(0)}%</span>
                 </div>
               )}
               {pitch.score_feedback && (

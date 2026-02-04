@@ -126,7 +126,7 @@ export default function CampaignDetail() {
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400">{m.label}</p>
                 <p className="text-xl font-bold text-gray-900 dark:text-white">
-                  {m.value != null ? `${(m.value * 100).toFixed(1)}%` : '--'}
+                  {m.value != null ? `${(Number(m.value) * 100).toFixed(1)}%` : '--'}
                 </p>
               </div>
             </div>

@@ -47,7 +47,7 @@ const ScoreBar: React.FC<ScoreBarProps> = ({ label, score, maxScore = 10 }) => {
             colors.text
           )}
         >
-          {score.toFixed(1)}/{maxScore}
+          {Number(score).toFixed(1)}/{maxScore}
         </span>
       </div>
       <div className="w-full h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
@@ -83,7 +83,7 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
             overallColor.text
           )}
         >
-          {scores.overall_score.toFixed(1)}
+          {Number(scores.overall_score).toFixed(1)}
         </div>
         <div>
           <p className="text-xs font-medium text-gray-900 dark:text-white">
@@ -108,7 +108,7 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
             overallColor.text
           )}
         >
-          {scores.overall_score.toFixed(1)}
+          {Number(scores.overall_score).toFixed(1)}
         </div>
         <div>
           <p className="text-sm font-semibold text-gray-900 dark:text-white">
