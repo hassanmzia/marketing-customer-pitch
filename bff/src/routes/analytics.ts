@@ -13,17 +13,37 @@ router.get('/dashboard', async (req: Request, res: Response, next: NextFunction)
   }
 });
 
-// GET /api/v1/analytics/trends - Trends data
-router.get('/trends', async (req: Request, res: Response, next: NextFunction) => {
+// GET /api/v1/analytics/pitches - Pitch analytics
+router.get('/pitches', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await backendProxy.get('/api/v1/analytics/trends/', req.query as Record<string, unknown>);
+    const result = await backendProxy.get('/api/v1/analytics/pitch-analytics/', req.query as Record<string, unknown>);
     res.status(result.status).json(result.data);
   } catch (error) {
     next(error);
   }
 });
 
-// GET /api/v1/analytics/agent-performance - Agent performance metrics
+// GET /api/v1/analytics/agents - Agent performance comparison
+router.get('/agents', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await backendProxy.get('/api/v1/analytics/agent-performance/agent-comparison/', req.query as Record<string, unknown>);
+    res.status(result.status).json(result.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/v1/analytics/trends - Performance trends
+router.get('/trends', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await backendProxy.get('/api/v1/analytics/agent-performance/trends/', req.query as Record<string, unknown>);
+    res.status(result.status).json(result.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/v1/analytics/agent-performance - Agent performance metrics (list)
 router.get('/agent-performance', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await backendProxy.get('/api/v1/analytics/agent-performance/', req.query as Record<string, unknown>);
@@ -36,7 +56,7 @@ router.get('/agent-performance', async (req: Request, res: Response, next: NextF
 // GET /api/v1/analytics/roi - ROI report
 router.get('/roi', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await backendProxy.get('/api/v1/analytics/roi/', req.query as Record<string, unknown>);
+    const result = await backendProxy.get('/api/v1/analytics/agent-performance/roi-report/', req.query as Record<string, unknown>);
     res.status(result.status).json(result.data);
   } catch (error) {
     next(error);

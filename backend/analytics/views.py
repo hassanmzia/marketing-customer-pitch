@@ -71,25 +71,46 @@ def dashboard(request):
 
     metrics_data = DashboardMetricSerializer(latest_metrics, many=True).data
 
+    # Compute average score from pitches
+    from pitches.models import PitchScore
+    avg_score_val = PitchScore.objects.filter(
+        is_active=True,
+    ).aggregate(avg=Avg('score'))['avg']
+
+    approval_rate = (
+        pitches_approved / pitches_generated
+        if pitches_generated > 0 else 0
+    )
+    agent_success_rate = (
+        successful_executions / total_executions
+        if total_executions > 0 else 0
+    )
+
     return Response({
+        # Flat fields expected by frontend KPI cards
+        'total_pitches': total_pitches,
+        'avg_score': avg_score_val,
+        'conversion_rate': round(avg_response_rate, 4),
+        'agent_efficiency': agent_success_rate,
+        'pitch_trend': None,
+        'score_trend': None,
+        'conversion_trend': None,
+        'efficiency_trend': None,
+        'campaign_roi': [],
+        'engagement_heatmap': [],
+        # Nested data still available
         'summary': {
             'total_customers': total_customers,
             'total_pitches': total_pitches,
             'active_campaigns': active_campaigns,
             'pitches_generated_30d': pitches_generated,
             'pitches_approved_30d': pitches_approved,
-            'approval_rate': (
-                pitches_approved / pitches_generated
-                if pitches_generated > 0 else 0
-            ),
+            'approval_rate': approval_rate,
         },
         'agent_stats': {
             'total_executions_30d': total_executions,
             'successful_executions_30d': successful_executions,
-            'success_rate': (
-                successful_executions / total_executions
-                if total_executions > 0 else 0
-            ),
+            'success_rate': agent_success_rate,
             'avg_tokens_per_execution': round(avg_tokens, 1),
         },
         'conversion_stats': {
@@ -109,6 +130,82 @@ class PitchAnalyticsViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['pitch', 'conversion', 'a_b_test_group']
+
+    def list(self, request, *args, **kwargs):
+        """
+        Override list to return the summary format the frontend expects:
+        { trends, score_distribution, top_pitches, results }
+        """
+        from pitches.models import Pitch, PitchScore
+
+        # Standard paginated results
+        response = super().list(request, *args, **kwargs)
+
+        # Build trends: daily pitch counts for last 30 days
+        days = int(request.query_params.get('days', '30'))
+        cutoff = timezone.now() - timedelta(days=days)
+
+        from django.db.models import Q
+        from django.db.models.functions import TruncDate
+        daily_counts = (
+            Pitch.objects.filter(is_active=True, created_at__gte=cutoff)
+            .annotate(date=TruncDate('created_at'))
+            .values('date')
+            .annotate(count=Count('id'))
+            .order_by('date')
+        )
+
+        trends = []
+        for entry in daily_counts:
+            approved_count = Pitch.objects.filter(
+                is_active=True, created_at__date=entry['date'], status='approved'
+            ).count()
+            trends.append({
+                'date': entry['date'].strftime('%b %d') if entry['date'] else '',
+                'count': entry['count'],
+                'approved': approved_count,
+            })
+
+        # Build score distribution
+        score_ranges = [
+            ('0-20%', 0, 0.2),
+            ('20-40%', 0.2, 0.4),
+            ('40-60%', 0.4, 0.6),
+            ('60-80%', 0.6, 0.8),
+            ('80-100%', 0.8, 1.01),
+        ]
+        score_distribution = []
+        for label, low, high in score_ranges:
+            cnt = PitchScore.objects.filter(
+                is_active=True, score__gte=low, score__lt=high
+            ).count()
+            score_distribution.append({'range': label, 'count': cnt})
+
+        # Top pitches by score
+        top_pitches = []
+        top_scored = (
+            Pitch.objects.filter(is_active=True, average_score__isnull=False)
+            .select_related('customer')
+            .order_by('-average_score')[:5]
+        )
+        for p in top_scored:
+            top_pitches.append({
+                'id': str(p.id),
+                'title': p.title,
+                'customer_name': p.customer.name if p.customer else '',
+                'overall_score': p.average_score,
+                'pitch_type': p.pitch_type,
+                'created_at': p.created_at.isoformat() if p.created_at else None,
+            })
+
+        response.data = {
+            'trends': trends,
+            'score_distribution': score_distribution,
+            'top_pitches': top_pitches,
+            'results': response.data.get('results', response.data) if isinstance(response.data, dict) else response.data,
+        }
+
+        return response
 
 
 class AgentPerformanceViewSet(viewsets.ReadOnlyModelViewSet):
@@ -166,6 +263,7 @@ class AgentPerformanceViewSet(viewsets.ReadOnlyModelViewSet):
             total = metric['total_executions'] or 0
             successful = metric['successful_executions'] or 0
             comparison.append({
+                'name': metric['agent_config__name'],
                 'agent_name': metric['agent_config__name'],
                 'agent_type': metric['agent_config__agent_type'],
                 'total_executions': total,
@@ -178,7 +276,7 @@ class AgentPerformanceViewSet(viewsets.ReadOnlyModelViewSet):
 
         return Response({
             'period': period,
-            'agents': comparison,
+            'comparison': comparison,
         })
 
     @action(detail=False, methods=['get'], url_path='roi-report')
