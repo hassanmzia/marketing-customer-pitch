@@ -17,7 +17,11 @@ from .serializers import (
     PitchSerializer,
     PitchTemplateSerializer,
 )
-from .tasks import async_generate_pitch, async_refine_pitch, async_score_pitch
+from .tasks import async_refine_pitch, async_score_pitch
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class PitchViewSet(viewsets.ModelViewSet):
@@ -40,29 +44,134 @@ class PitchViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='generate')
     def generate(self, request):
         """
-        Trigger pitch generation via the AI agent pipeline.
+        Generate a pitch for a customer.
+
+        Tries the AI agent pipeline first; falls back to template-based
+        generation so a pitch record is always created and returned.
         """
         serializer = PitchGenerateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        task = async_generate_pitch.delay(
-            customer_id=str(serializer.validated_data['customer_id']),
-            tone=serializer.validated_data.get('tone', 'professional'),
-            pitch_type=serializer.validated_data.get('pitch_type', 'initial'),
-            template_id=str(serializer.validated_data['template_id'])
-            if serializer.validated_data.get('template_id') else None,
-            campaign_id=str(serializer.validated_data['campaign_id'])
-            if serializer.validated_data.get('campaign_id') else None,
-            additional_context=serializer.validated_data.get('additional_context', ''),
+        customer_id = str(serializer.validated_data['customer_id'])
+        tone = serializer.validated_data.get('tone', 'professional')
+        pitch_type = serializer.validated_data.get('pitch_type', 'initial')
+        template_id = serializer.validated_data.get('template_id')
+        campaign_id = serializer.validated_data.get('campaign_id')
+        additional_context = serializer.validated_data.get('additional_context', '')
+
+        from customers.models import Customer
+
+        try:
+            customer = Customer.objects.get(id=customer_id)
+        except Customer.DoesNotExist:
+            return Response(
+                {'error': 'Customer not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        title = f'Pitch for {customer.company}'
+        content = ''
+        generated_by = 'system'
+
+        # Try AI generation first
+        try:
+            from agents.services import AgentService
+
+            agent_service = AgentService()
+            context = {
+                'customer_name': customer.name,
+                'company': customer.company,
+                'industry': customer.industry,
+                'company_size': customer.company_size,
+                'description': customer.description,
+                'preferences': customer.preferences,
+                'tone': tone,
+                'additional_context': additional_context,
+            }
+
+            if template_id:
+                try:
+                    tmpl = PitchTemplate.objects.get(id=template_id)
+                    context['template'] = tmpl.template_content
+                    context['template_variables'] = tmpl.variables
+                    tmpl.usage_count += 1
+                    tmpl.save(update_fields=['usage_count'])
+                except PitchTemplate.DoesNotExist:
+                    pass
+
+            result = agent_service.generate_pitch(customer_id, context)
+            title = result.get('title', title)
+            content = result.get('content', '')
+            generated_by = 'pitch_generator_agent'
+
+        except Exception as e:
+            logger.warning('AI generation failed, using template fallback: %s', e)
+
+            # Fallback: use template content or generate from customer data
+            template = None
+            if template_id:
+                try:
+                    template = PitchTemplate.objects.get(id=template_id)
+                    template.usage_count += 1
+                    template.save(update_fields=['usage_count'])
+                except PitchTemplate.DoesNotExist:
+                    pass
+
+            if not template:
+                template = (
+                    PitchTemplate.objects.filter(
+                        is_active=True, pitch_type=pitch_type,
+                        industry=customer.industry,
+                    ).first()
+                    or PitchTemplate.objects.filter(
+                        is_active=True, pitch_type=pitch_type, industry='',
+                    ).first()
+                    or PitchTemplate.objects.filter(is_active=True).first()
+                )
+
+            if template:
+                title = f'{template.name} \u2014 {customer.company}'
+                content = template.template_content
+                replacements = {
+                    'company_name': customer.company,
+                    'contact_name': customer.name,
+                    'industry': customer.industry,
+                }
+                for var, val in replacements.items():
+                    content = content.replace('{' + var + '}', val or '')
+                generated_by = f'template:{template.id}'
+            else:
+                title = (
+                    f'{pitch_type.replace("_", " ").title()} Pitch '
+                    f'\u2014 {customer.company}'
+                )
+                content = (
+                    f'Dear {customer.name},\n\n'
+                    f'I hope this message finds you well. I\'m reaching out to '
+                    f'{customer.company} regarding opportunities in the '
+                    f'{customer.industry} space.\n\n'
+                    f'{additional_context}\n\n'
+                    f'I\'d love to discuss how we can help your team achieve '
+                    f'its goals.\n\n'
+                    f'Best regards'
+                )
+                generated_by = 'fallback'
+
+        pitch = Pitch.objects.create(
+            customer=customer,
+            title=title,
+            content=content,
+            pitch_type=pitch_type,
+            status='generated',
+            tone=tone,
+            generated_by=generated_by,
+            campaign_id=campaign_id,
+            metadata={'additional_context': additional_context},
         )
 
         return Response(
-            {
-                'message': 'Pitch generation started',
-                'task_id': task.id,
-                'status': 'pending',
-            },
-            status=status.HTTP_202_ACCEPTED,
+            PitchSerializer(pitch).data,
+            status=status.HTTP_201_CREATED,
         )
 
     @action(detail=True, methods=['post'], url_path='score')
