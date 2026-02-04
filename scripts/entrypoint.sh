@@ -40,6 +40,7 @@ echo "  Redis is ready!"
 
 # ── Run Database Migrations ──────────────────
 echo "[3/5] Running database migrations..."
+python manage.py makemigrations --noinput 2>/dev/null || true
 python manage.py migrate --noinput
 echo "  Migrations complete!"
 
