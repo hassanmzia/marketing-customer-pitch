@@ -47,9 +47,9 @@ export default function AnalyticsDashboard() {
 
   const kpis = [
     { label: 'Total Pitches', value: analytics?.total_pitches ?? 0, icon: <FileText className="h-5 w-5" />, color: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-900/20', trend: analytics?.pitch_trend },
-    { label: 'Avg Score', value: analytics?.avg_score != null ? `${(analytics.avg_score * 100).toFixed(0)}%` : 'N/A', icon: <Target className="h-5 w-5" />, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-900/20', trend: analytics?.score_trend },
-    { label: 'Conversion Rate', value: analytics?.conversion_rate != null ? `${(analytics.conversion_rate * 100).toFixed(1)}%` : 'N/A', icon: <TrendingUp className="h-5 w-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20', trend: analytics?.conversion_trend },
-    { label: 'Agent Efficiency', value: analytics?.agent_efficiency != null ? `${(analytics.agent_efficiency * 100).toFixed(0)}%` : 'N/A', icon: <Zap className="h-5 w-5" />, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/20', trend: analytics?.efficiency_trend },
+    { label: 'Avg Score', value: analytics?.avg_score != null ? `${(Number(analytics.avg_score) * 100).toFixed(0)}%` : 'N/A', icon: <Target className="h-5 w-5" />, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-900/20', trend: analytics?.score_trend },
+    { label: 'Conversion Rate', value: analytics?.conversion_rate != null ? `${(Number(analytics.conversion_rate) * 100).toFixed(1)}%` : 'N/A', icon: <TrendingUp className="h-5 w-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20', trend: analytics?.conversion_trend },
+    { label: 'Agent Efficiency', value: analytics?.agent_efficiency != null ? `${(Number(analytics.agent_efficiency) * 100).toFixed(0)}%` : 'N/A', icon: <Zap className="h-5 w-5" />, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/20', trend: analytics?.efficiency_trend },
   ];
 
   const pitchTrends = pitchAnalytics?.trends ?? [];
@@ -156,7 +156,7 @@ export default function AnalyticsDashboard() {
           {campaignROI.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <PieChart>
-                <Pie data={campaignROI} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                <Pie data={campaignROI} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
                   {campaignROI.map((_: any, idx: number) => <Cell key={idx} fill={COLORS[idx % COLORS.length]} />)}
                 </Pie>
                 <Tooltip />
@@ -184,7 +184,7 @@ export default function AnalyticsDashboard() {
                   <tr key={pitch.id}>
                     <td className="py-2 font-medium text-gray-900 dark:text-white">{pitch.title}</td>
                     <td className="py-2 text-gray-600 dark:text-gray-300">{pitch.customer_name}</td>
-                    <td className="py-2"><span className="font-bold text-indigo-600 dark:text-indigo-400">{pitch.overall_score != null ? `${(pitch.overall_score * 100).toFixed(0)}%` : '--'}</span></td>
+                    <td className="py-2"><span className="font-bold text-indigo-600 dark:text-indigo-400">{pitch.overall_score != null ? `${(Number(pitch.overall_score) * 100).toFixed(0)}%` : '--'}</span></td>
                     <td className="py-2 capitalize text-gray-500">{pitch.pitch_type?.replace(/_/g, ' ')}</td>
                     <td className="py-2 text-gray-400 text-xs">{pitch.created_at ? format(new Date(pitch.created_at), 'MMM d') : ''}</td>
                   </tr>
