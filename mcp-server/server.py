@@ -140,6 +140,8 @@ mcp = FastMCP(
     "Marketing Pitch MCP Tools",
     host="0.0.0.0",
     port=8165,
+    stateless_http=True,
+    json_response=True,
 )
 
 # ---------------------------------------------------------------------------
