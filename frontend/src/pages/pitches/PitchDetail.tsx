@@ -83,6 +83,15 @@ export default function PitchDetail() {
     toast.success('Pitch exported!');
   };
 
+  if (!id || id === 'undefined') {
+    return (
+      <div className="py-16 text-center">
+        <p className="text-red-500 mb-4">Invalid pitch ID.</p>
+        <button onClick={() => navigate('/pitches')} className="text-sm text-indigo-600 hover:text-indigo-700">Back to Pitches</button>
+      </div>
+    );
+  }
+
   if (isLoading) return <div className="flex justify-center py-16"><LoadingSpinner /></div>;
   if (isError || !pitch) return <div className="py-16 text-center"><p className="text-red-500">Pitch not found.</p></div>;
 
