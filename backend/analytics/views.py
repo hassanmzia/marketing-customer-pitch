@@ -88,7 +88,9 @@ def dashboard(request):
 
     return Response({
         # Flat fields expected by frontend KPI cards
+        'total_customers': total_customers,
         'total_pitches': total_pitches,
+        'active_campaigns': active_campaigns,
         'avg_score': avg_score_val,
         'conversion_rate': round(avg_response_rate, 4),
         'agent_efficiency': agent_success_rate,
@@ -96,6 +98,8 @@ def dashboard(request):
         'score_trend': None,
         'conversion_trend': None,
         'efficiency_trend': None,
+        'customer_trend': None,
+        'campaign_trend': None,
         'campaign_roi': [],
         'engagement_heatmap': [],
         # Nested data still available
