@@ -90,6 +90,27 @@ function formatMessageContent(msg: any): string {
   return keys.length > 0 ? `Fields: ${keys.join(', ')}` : JSON.stringify(c).substring(0, 200);
 }
 
+const STEP_LABELS: Record<string, string> = {
+  research: 'Research',
+  generate: 'Pitch Generation',
+  score: 'Scoring',
+  orchestration: 'Orchestration',
+};
+
+function formatLogStep(log: any): string {
+  if (log.message) return log.message;
+  const step = log.step ?? '';
+  const label = STEP_LABELS[step] ?? (step.startsWith('refine') ? `Refinement #${step.split('_')[1] ?? ''}` : step);
+  if (log.average_score !== undefined) {
+    const pct = `${Math.round(Number(log.average_score) * 100)}%`;
+    const dims = log.scores ? Object.entries(log.scores).map(([k, v]) => `${k}: ${Math.round(Number(v) * 100)}%`).join(', ') : '';
+    return `${label} — Average: ${pct}${dims ? ` (${dims})` : ''}`;
+  }
+  if (log.pitch_id && step === 'generate') return `${label}: created pitch ${String(log.pitch_id).substring(0, 8)}...`;
+  if (log.error) return `${label} failed: ${String(log.error).substring(0, 100)}`;
+  return `${label} ${log.status ?? ''}`.trim();
+}
+
 const MESSAGE_TYPE_LABELS: Record<string, { label: string; color: string }> = {
   request: { label: 'Request', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
   response: { label: 'Response', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
@@ -294,7 +315,7 @@ export default function AgentDashboard() {
                 <div key={idx} className="flex items-start gap-2 text-xs">
                   <span className={clsx('mt-0.5 h-2 w-2 flex-shrink-0 rounded-full', log.status === 'completed' ? 'bg-emerald-500' : log.status === 'failed' ? 'bg-red-500' : log.status === 'running' ? 'bg-amber-500 animate-pulse' : 'bg-gray-400')} />
                   <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">{log.timestamp ? format(new Date(log.timestamp), 'HH:mm:ss') : ''}</span>
-                  <span className="text-gray-700 dark:text-gray-300">{log.message ?? log.step ?? JSON.stringify(log)}</span>
+                  <span className="text-gray-700 dark:text-gray-300">{formatLogStep(log)}</span>
                 </div>
               ))}
             </div>

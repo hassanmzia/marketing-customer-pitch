@@ -811,9 +811,12 @@ class A2AService:
                     correlation_id=correlation_id,
                     parent_message=research_msg,
                 )
+            research_source = research_result.get('source', 'unknown')
             pipeline_result['steps'].append({
                 'step': 'research',
                 'status': 'completed',
+                'message': f'Researched {customer.company} via {research_source}',
+                'timestamp': timezone.now().isoformat(),
                 'message_id': str(research_msg.id) if research_msg else None,
             })
         except Exception as e:
@@ -835,6 +838,8 @@ class A2AService:
             pipeline_result['steps'].append({
                 'step': 'research',
                 'status': 'failed',
+                'message': f'Research failed for {customer.company}: {e}',
+                'timestamp': timezone.now().isoformat(),
                 'error': str(e),
             })
 
@@ -900,6 +905,8 @@ class A2AService:
         pipeline_result['steps'].append({
             'step': 'generate',
             'status': 'completed',
+            'message': f'Generated pitch: "{pitch_result.get("title", "Untitled")}"',
+            'timestamp': timezone.now().isoformat(),
             'pitch_id': str(pitch.id),
             'message_id': str(gen_msg.id) if gen_msg else None,
         })
@@ -954,9 +961,12 @@ class A2AService:
                 parent_message=score_msg,
             )
 
+        score_details = ', '.join(f'{dim}: {s:.0%}' for dim, s in pitch.scores.items())
         pipeline_result['steps'].append({
             'step': 'score',
             'status': 'completed',
+            'message': f'Scored pitch — Average: {avg_score:.0%} ({score_details})',
+            'timestamp': timezone.now().isoformat(),
             'scores': pitch.scores,
             'average_score': avg_score,
             'message_id': str(score_msg.id) if score_msg else None,
@@ -1033,9 +1043,17 @@ class A2AService:
             avg_score = refined_pitch.average_score or 0.0
             pitch = refined_pitch  # Update reference for next iteration
 
+            refine_score_details = ', '.join(
+                f'{dim}: {s:.0%}' for dim, s in refined_pitch.scores.items()
+            )
             pipeline_result['steps'].append({
                 'step': f'refine_{refinement_count}',
                 'status': 'completed',
+                'message': (
+                    f'Refinement #{refinement_count}: '
+                    f'New score {avg_score:.0%} ({refine_score_details})'
+                ),
+                'timestamp': timezone.now().isoformat(),
                 'pitch_id': str(refined_pitch.id),
                 'scores': refined_pitch.scores,
                 'average_score': avg_score,
