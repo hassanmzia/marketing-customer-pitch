@@ -49,7 +49,7 @@ export default function MCPToolExplorer() {
 
   const executeMutation = useMutation({
     mutationFn: ({ tool, params }: { tool: string; params: Record<string, any> }) =>
-      mcpApi.executeTool(tool, params),
+      mcpApi.executeTool({ tool_name: tool, arguments: params }),
     onSuccess: (data: any) => {
       setResult(data);
       setExecutionHistory((prev) => [
