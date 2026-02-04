@@ -5,14 +5,38 @@ import { AppError } from '../middleware/errorHandler.js';
 
 const router = Router();
 
-// Create a dedicated axios instance for MCP server communication
+/**
+ * Parse an SSE (text/event-stream) response body and extract the last
+ * JSON-RPC result object.  SSE lines look like:
+ *   event: message
+ *   data: {"jsonrpc":"2.0","result":{...},"id":"2"}
+ */
+function parseSSE(raw: string): unknown {
+  let last: unknown = null;
+  for (const line of raw.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('data:')) {
+      try {
+        last = JSON.parse(trimmed.slice(5).trim());
+      } catch { /* skip non-JSON data lines */ }
+    }
+  }
+  return last;
+}
+
+// Create a dedicated axios instance for MCP server communication.
+// responseType 'text' ensures we always receive the raw body so we can
+// handle both JSON and SSE responses uniformly.
 const mcpClient: AxiosInstance = axios.create({
   baseURL: config.mcpServerUrl,
   timeout: config.timeouts.aiOperations,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
+    'Accept': 'text/event-stream, application/json',
   },
+  responseType: 'text',
+  // Prevent axios from rejecting non-JSON responses
+  transformResponse: [(data) => data],
 });
 
 mcpClient.interceptors.request.use((reqConfig) => {
@@ -32,6 +56,26 @@ mcpClient.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+/**
+ * Decode the MCP response body.  Handles both application/json and
+ * text/event-stream content types transparently.
+ */
+function decodeMCPResponse(response: { data: unknown; headers: Record<string, string> }): unknown {
+  const ct = (response.headers['content-type'] || '').toLowerCase();
+  const raw = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+
+  if (ct.includes('text/event-stream')) {
+    return parseSSE(raw);
+  }
+
+  // JSON or unknown — try to parse
+  try {
+    return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+  } catch {
+    return response.data;
+  }
+}
 
 // Static tool definitions matching the MCP server's registered tools.
 // Used as a fallback when the MCP server is unavailable.
@@ -57,7 +101,8 @@ router.get('/tools', async (req: Request, res: Response, next: NextFunction) => 
       method: 'tools/list',
       id: '1',
     });
-    const tools = response.data?.result?.tools ?? response.data?.tools ?? STATIC_TOOLS;
+    const data = decodeMCPResponse(response) as Record<string, unknown> | null;
+    const tools = (data as any)?.result?.tools ?? (data as any)?.tools ?? STATIC_TOOLS;
     res.json(tools);
   } catch (error) {
     // Fallback to static tool list so the page isn't empty
@@ -74,7 +119,8 @@ router.post('/tools', async (req: Request, res: Response, next: NextFunction) =>
       method: 'tools/list',
       id: '1',
     });
-    const tools = response.data?.result?.tools ?? response.data?.tools ?? STATIC_TOOLS;
+    const data = decodeMCPResponse(response) as Record<string, unknown> | null;
+    const tools = (data as any)?.result?.tools ?? (data as any)?.tools ?? STATIC_TOOLS;
     res.json(tools);
   } catch (error) {
     console.warn('[MCP] Server unavailable, returning static tool list');
@@ -108,7 +154,8 @@ router.post('/tools/execute', async (req: Request, res: Response, next: NextFunc
       id: '2',
     });
 
-    const result = response.data?.result ?? response.data;
+    const data = decodeMCPResponse(response) as Record<string, unknown> | null;
+    const result = (data as any)?.result ?? data;
     res.json({ result });
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -151,7 +198,8 @@ router.post('/execute', async (req: Request, res: Response, next: NextFunction) 
       id: '2',
     });
 
-    const result = response.data?.result ?? response.data;
+    const data = decodeMCPResponse(response) as Record<string, unknown> | null;
+    const result = (data as any)?.result ?? data;
     res.json({ result });
   } catch (error) {
     if (axios.isAxiosError(error)) {
