@@ -60,6 +60,62 @@ class Customer(BaseModel):
     def __str__(self):
         return f'{self.name} ({self.company})'
 
+    def calculate_lead_score(self):
+        """Calculate a lead score (0-100) based on profile completeness,
+        status, company size, interactions, and pitch history."""
+        score = 0
+
+        # Profile completeness (up to 30 points)
+        if self.name:
+            score += 5
+        if self.email:
+            score += 5
+        if self.company:
+            score += 5
+        if self.industry:
+            score += 5
+        if self.description:
+            score += 5
+        if self.website:
+            score += 5
+
+        # Company size (up to 15 points)
+        size_scores = {
+            'enterprise': 15,
+            'mid-market': 12,
+            'smb': 8,
+            'startup': 5,
+        }
+        score += size_scores.get(self.company_size, 0)
+
+        # Status progression (up to 20 points)
+        status_scores = {
+            'prospect': 5,
+            'lead': 10,
+            'qualified': 15,
+            'customer': 20,
+            'churned': 3,
+        }
+        score += status_scores.get(self.status, 0)
+
+        # Interactions (up to 20 points)
+        interaction_count = self.interactions.count() if self.pk else 0
+        score += min(interaction_count * 4, 20)
+
+        # Pitch history (up to 15 points)
+        if self.pk:
+            from pitches.models import Pitch
+            pitch_count = Pitch.objects.filter(
+                customer=self, is_active=True
+            ).count()
+            score += min(pitch_count * 5, 15)
+
+        return min(score, 100)
+
+    def save(self, **kwargs):
+        self.lead_score = self.calculate_lead_score()
+        super().save(**kwargs)
+
 
 class CustomerInteraction(BaseModel):
     """
