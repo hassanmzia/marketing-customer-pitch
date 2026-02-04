@@ -29,6 +29,7 @@ import {
   Clock,
   Building2,
   User,
+  Loader2,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import ScoreDisplay from '@/components/common/ScoreDisplay';
@@ -216,6 +217,8 @@ const PitchGenerator: React.FC = () => {
   // Step 3 state
   const [refinementFeedback, setRefinementFeedback] = useState('');
   const [showRefinement, setShowRefinement] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [abVariants, setAbVariants] = useState<any[] | null>(null);
   const [subjectLines, setSubjectLines] = useState<any[] | null>(null);
   const [followupSequence, setFollowupSequence] = useState<any[] | null>(null);
@@ -412,18 +415,41 @@ const PitchGenerator: React.FC = () => {
     toast.success('Copied to clipboard!');
   };
 
-  const handleExport = () => {
+  const handleExportMd = () => {
     if (!generatedPitch) return;
-    const blob = new Blob([generatedPitch.content], { type: 'text/plain' });
+    const blob = new Blob([generatedPitch.content], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${generatedPitch.title || 'pitch'}.txt`;
+    a.download = `${(generatedPitch.title || 'pitch').replace(/\s+/g, '_')}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success('Pitch exported!');
+    setShowExportMenu(false);
+    toast.success('Exported as Markdown!');
+  };
+
+  const handleExportPdf = async () => {
+    if (!generatedPitch) return;
+    setExportingPdf(true);
+    try {
+      const blob = await pitchApi.export(generatedPitch.id, 'pdf');
+      const url = URL.createObjectURL(blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(generatedPitch.title || 'pitch').replace(/\s+/g, '_')}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setShowExportMenu(false);
+      toast.success('Exported as PDF!');
+    } catch {
+      toast.error('Failed to export PDF');
+    } finally {
+      setExportingPdf(false);
+    }
   };
 
   const handleApplyRefinement = () => {
@@ -1238,15 +1264,27 @@ const PitchGenerator: React.FC = () => {
                 </span>
               </button>
 
-              <button
-                onClick={handleExport}
-                className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-md transition-all text-center"
-              >
-                <Download size={20} className="text-gray-500" />
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                  Export
-                </span>
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                  className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-md transition-all text-center"
+                >
+                  {exportingPdf ? <Loader2 size={20} className="text-gray-500 animate-spin" /> : <Download size={20} className="text-gray-500" />}
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Export
+                  </span>
+                </button>
+                {showExportMenu && (
+                  <div className="absolute left-1/2 -translate-x-1/2 z-10 mt-1 w-44 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                    <button onClick={handleExportMd} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700">
+                      <FileText size={16} /> Markdown (.md)
+                    </button>
+                    <button onClick={handleExportPdf} disabled={exportingPdf} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-gray-700">
+                      {exportingPdf ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} PDF (.pdf)
+                    </button>
+                  </div>
+                )}
+              </div>
 
               <button
                 onClick={() => approveMutation.mutate()}
