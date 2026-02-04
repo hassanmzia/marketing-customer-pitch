@@ -1,0 +1,80 @@
+# ============================================
+# Docker Ignore - AI Marketing Pitch Assistant
+# ============================================
+
+# ── Version Control ──────────────────────────
+.git
+.gitignore
+
+# ── Python ───────────────────────────────────
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.venv/
+venv/
+env/
+ENV/
+
+# ── Node.js ──────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+
+# ── IDE / Editor ─────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── Docker ───────────────────────────────────
+docker-compose*.yml
+.dockerignore
+Dockerfile
+
+# ── Environment / Secrets ────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Testing / Coverage ──────────────────────
+.coverage
+htmlcov/
+.tox/
+.pytest_cache/
+.mypy_cache/
+coverage/
+*.cover
+
+# ── Logs ─────────────────────────────────────
+*.log
+logs/
+
+# ── Documentation ────────────────────────────
+*.md
+LICENSE
+docs/
+
+# ── Jupyter Notebooks ────────────────────────
+*.ipynb
+.ipynb_checkpoints/
+
+# ── OS Files ─────────────────────────────────
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
