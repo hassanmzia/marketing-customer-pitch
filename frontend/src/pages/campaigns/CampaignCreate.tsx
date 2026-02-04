@@ -181,8 +181,8 @@ export default function CampaignCreate() {
 
         <div className="flex justify-end gap-3">
           <button type="button" onClick={() => navigate('/campaigns')} className="rounded-lg border border-gray-200 bg-white px-6 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">Cancel</button>
-          <button type="submit" disabled={createMutation.isLoading} className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-50">
-            {createMutation.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarIcon className="h-4 w-4" />} Create Campaign
+          <button type="submit" disabled={createMutation.isPending} className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-50">
+            {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarIcon className="h-4 w-4" />} Create Campaign
           </button>
         </div>
       </form>

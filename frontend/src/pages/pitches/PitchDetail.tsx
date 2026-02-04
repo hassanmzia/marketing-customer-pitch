@@ -52,7 +52,7 @@ export default function PitchDetail() {
   });
 
   const refineMutation = useMutation({
-    mutationFn: (feedback: string) => pitchApi.refine(id!, { feedback }),
+    mutationFn: (feedback: string) => pitchApi.refine(id!, feedback),
     onSuccess: (refined: any) => {
       setShowRefineModal(false);
       setRefineFeedback('');
@@ -113,8 +113,8 @@ export default function PitchDetail() {
           <button onClick={() => setShowRefineModal(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
             <RefreshCw className="h-4 w-4" /> Refine
           </button>
-          <button onClick={() => scoreMutation.mutate()} disabled={scoreMutation.isLoading} className="inline-flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 transition hover:bg-purple-100 disabled:opacity-50 dark:border-purple-800 dark:bg-purple-900/20 dark:text-purple-400">
-            {scoreMutation.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Target className="h-4 w-4" />} Re-score
+          <button onClick={() => scoreMutation.mutate()} disabled={scoreMutation.isPending} className="inline-flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 transition hover:bg-purple-100 disabled:opacity-50 dark:border-purple-800 dark:bg-purple-900/20 dark:text-purple-400">
+            {scoreMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Target className="h-4 w-4" />} Re-score
           </button>
           <button onClick={handleExport} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300">
             <Download className="h-4 w-4" /> Export
@@ -215,7 +215,7 @@ export default function PitchDetail() {
 
       {/* Refine Modal */}
       {showRefineModal && (
-        <Modal onClose={() => setShowRefineModal(false)} title="Refine Pitch">
+        <Modal isOpen={showRefineModal} onClose={() => setShowRefineModal(false)} title="Refine Pitch">
           <div className="space-y-4">
             <textarea
               value={refineFeedback}
@@ -228,10 +228,10 @@ export default function PitchDetail() {
               <button onClick={() => setShowRefineModal(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 dark:border-gray-700 dark:text-gray-300">Cancel</button>
               <button
                 onClick={() => refineMutation.mutate(refineFeedback)}
-                disabled={!refineFeedback.trim() || refineMutation.isLoading}
+                disabled={!refineFeedback.trim() || refineMutation.isPending}
                 className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
               >
-                {refineMutation.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Refine
+                {refineMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Refine
               </button>
             </div>
           </div>
