@@ -12,10 +12,14 @@ import os
 import re
 
 import psycopg2
+import uvicorn
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from mcp.server.fastmcp import FastMCP
+from starlette.applications import Starlette
+from starlette.responses import JSONResponse
+from starlette.routing import Route, Mount
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -671,9 +675,27 @@ def generate_followup_sequence(
 # Entry point
 # ---------------------------------------------------------------------------
 
+
+async def health_check(request):
+    """Health check endpoint for Docker healthcheck."""
+    return JSONResponse({"status": "ok"})
+
+
 if __name__ == "__main__":
     logger.info(
         "Starting Marketing Pitch MCP Server on 0.0.0.0:8165 "
         "(streamable-http transport)"
     )
-    mcp.run(transport="streamable-http")
+
+    # Get the MCP ASGI app
+    mcp_app = mcp.streamable_http_app()
+
+    # Wrap in a Starlette app that adds /health
+    app = Starlette(
+        routes=[
+            Route("/health", health_check),
+            Mount("/", app=mcp_app),
+        ]
+    )
+
+    uvicorn.run(app, host="0.0.0.0", port=8165)
