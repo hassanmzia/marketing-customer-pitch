@@ -163,14 +163,26 @@ def orchestrate_pitch(request):
         logger.warning('Synchronous orchestration failed, trying async: %s', e)
         try:
             task = async_orchestrate_pipeline.delay(customer_id, campaign_id)
-            execution.output_data = {'celery_task_id': task.id}
+            execution.output_data = {
+                'celery_task_id': task.id,
+                'steps': [
+                    {'step': 'orchestration', 'status': 'running',
+                     'message': 'Pipeline running asynchronously...'},
+                ],
+            }
             execution.save(update_fields=['output_data'])
         except Exception as async_err:
             logger.warning('Async orchestration also failed: %s', async_err)
             execution.status = 'failed'
             execution.error_message = str(e)
+            execution.output_data = {
+                'steps': [
+                    {'step': 'orchestration', 'status': 'failed',
+                     'message': f'Pipeline failed: {e}'},
+                ],
+            }
             execution.completed_at = timezone.now()
-            execution.save(update_fields=['status', 'error_message', 'completed_at'])
+            execution.save(update_fields=['status', 'error_message', 'output_data', 'completed_at'])
 
     exec_data = AgentExecutionSerializer(execution).data
 
