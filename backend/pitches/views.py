@@ -192,25 +192,53 @@ class PitchViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='refine')
     def refine(self, request, pk=None):
-        """Trigger pitch refinement based on feedback."""
+        """Refine a pitch based on feedback, returning the new version."""
         pitch = self.get_object()
         serializer = PitchRefineSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        task = async_refine_pitch.delay(
-            pitch_id=str(pitch.id),
-            feedback=serializer.validated_data['feedback'],
-            tone=serializer.validated_data.get('tone'),
+        feedback = serializer.validated_data['feedback']
+        tone = serializer.validated_data.get('tone') or pitch.tone
+
+        # Try AI refinement, fall back to simple append
+        title = pitch.title
+        content = pitch.content
+        generated_by = 'fallback'
+        try:
+            from agents.services import AgentService
+            agent_service = AgentService()
+            result = agent_service.refine_pitch(str(pitch.id), feedback)
+            title = result.get('title', title)
+            content = result.get('content', content)
+            generated_by = 'refiner_agent'
+        except Exception as e:
+            logger.warning('AI refinement failed, using fallback: %s', e)
+            content = (
+                f'{pitch.content}\n\n---\n\n'
+                f'**Refinement based on feedback:** {feedback}'
+            )
+
+        refined_pitch = Pitch.objects.create(
+            customer=pitch.customer,
+            title=title,
+            content=content,
+            pitch_type='refined',
+            version=pitch.version + 1,
+            status='refined',
+            tone=tone,
+            generated_by=generated_by,
+            parent_pitch=pitch,
+            campaign=pitch.campaign,
+            feedback=feedback,
+            metadata={
+                'refinement_feedback': feedback,
+                'parent_version': pitch.version,
+            },
         )
 
         return Response(
-            {
-                'message': 'Pitch refinement started',
-                'task_id': task.id,
-                'pitch_id': str(pitch.id),
-                'status': 'pending',
-            },
-            status=status.HTTP_202_ACCEPTED,
+            PitchSerializer(refined_pitch).data,
+            status=status.HTTP_201_CREATED,
         )
 
     @action(detail=True, methods=['get'], url_path='history')
