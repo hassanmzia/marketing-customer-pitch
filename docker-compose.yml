@@ -230,9 +230,6 @@ services:
       PORT: 4064
       BACKEND_URL: http://backend:8064
       MCP_SERVER_URL: http://mcp-server:8165/mcp
-    volumes:
-      - ./bff:/app
-      - /app/node_modules
     networks:
       - pitch-network
     depends_on:
