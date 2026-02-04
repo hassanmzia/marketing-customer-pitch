@@ -263,11 +263,6 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
-        'file': {
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs' / 'app.log',
-            'formatter': 'verbose',
-        },
     },
     'root': {
         'handlers': ['console'],
@@ -291,9 +286,3 @@ LOGGING = {
         },
     },
 }
-
-# Ensure log directory exists
-try:
-    (BASE_DIR / 'logs').mkdir(exist_ok=True)
-except PermissionError:
-    pass
