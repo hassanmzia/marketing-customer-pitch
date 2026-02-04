@@ -83,4 +83,5 @@ exec gunicorn config.wsgi:application \
     --max-requests-jitter 50 \
     --access-logfile - \
     --error-logfile - \
-    --log-level info
+    --log-level info \
+    --reload

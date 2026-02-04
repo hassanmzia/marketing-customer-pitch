@@ -78,6 +78,28 @@ def dashboard(request):
         is_active=True,
     ).aggregate(avg=Avg('score'))['avg']
 
+    # Pitch trend chart: daily counts for last 7 days
+    from django.db.models.functions import TruncDate
+    seven_days_ago = now - timedelta(days=7)
+    daily_counts = (
+        Pitch.objects.filter(is_active=True, created_at__gte=seven_days_ago)
+        .annotate(date=TruncDate('created_at'))
+        .values('date')
+        .annotate(count=Count('id'))
+        .order_by('date')
+    )
+    # Build a complete 7-day series (fill missing days with 0)
+    pitch_trend_chart = []
+    counts_by_date = {
+        entry['date']: entry['count'] for entry in daily_counts
+    }
+    for i in range(7):
+        day = (now - timedelta(days=6 - i)).date()
+        pitch_trend_chart.append({
+            'date': day.strftime('%b %d'),
+            'count': counts_by_date.get(day, 0),
+        })
+
     approval_rate = (
         pitches_approved / pitches_generated
         if pitches_generated > 0 else 0
@@ -116,6 +138,7 @@ def dashboard(request):
             }
             for c in Campaign.objects.filter(is_active=True)[:5]
         ],
+        'pitch_trend_chart': pitch_trend_chart,
         'engagement_heatmap': [],
         # Nested data still available
         'summary': {
