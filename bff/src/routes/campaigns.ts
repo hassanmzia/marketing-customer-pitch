@@ -80,7 +80,7 @@ router.post('/:id/targets', async (req: Request, res: Response, next: NextFuncti
 // DELETE /api/v1/campaigns/:id/targets/:targetId - Remove target
 router.delete('/:id/targets/:targetId', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await backendProxy.delete(`/api/v1/campaigns/targets/${req.params.targetId}/`);
+    const result = await backendProxy.delete(`/api/v1/campaigns/${req.params.id}/targets/${req.params.targetId}/`);
     res.status(result.status).json(result.data);
   } catch (error) {
     next(error);

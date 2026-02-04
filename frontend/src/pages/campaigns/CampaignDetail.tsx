@@ -159,7 +159,7 @@ export default function CampaignDetail() {
                     <td className="py-2 font-medium text-gray-900 dark:text-white">{t.customer_name ?? t.name ?? 'Customer'}</td>
                     <td className="py-2"><StatusBadge status={t.status ?? 'pending'} /></td>
                     <td className="py-2 text-gray-500">{t.pitched_at ? format(new Date(t.pitched_at), 'MMM d') : '--'}</td>
-                    <td className="py-2 text-gray-500">{t.response_at ? format(new Date(t.response_at), 'MMM d') : '--'}</td>
+                    <td className="py-2 text-gray-500">{(t.responded_at || t.response_at) ? format(new Date(t.responded_at || t.response_at), 'MMM d') : '--'}</td>
                   </tr>
                 ))}
               </tbody>

@@ -27,6 +27,65 @@ import StatusBadge from '@/components/common/StatusBadge';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import EmptyState from '@/components/common/EmptyState';
 
+/**
+ * Render A2A message content in a human-readable way instead of raw JSON.
+ */
+function formatMessageContent(msg: any): string {
+  const c = msg.content ?? msg.payload;
+  if (!c || typeof c !== 'object') return typeof c === 'string' ? c : JSON.stringify(c);
+
+  const type = msg.message_type;
+  const toAgent = msg.to_agent_name ?? '';
+
+  // Research requests
+  if (toAgent.toLowerCase().includes('research') && c.customer_id) {
+    return `Requesting customer research for ID ${String(c.customer_id).substring(0, 8)}...`;
+  }
+
+  // Pitch generation delegate
+  if (type === 'delegate' && c.context) {
+    const ctx = c.context as Record<string, unknown>;
+    const company = ctx.company ?? ctx.customer_name ?? '';
+    const tone = ctx.tone ?? '';
+    const hasResearch = !!(ctx.research);
+    return `Generate ${tone ? tone + ' ' : ''}pitch for ${company}${hasResearch ? ' (with research data)' : ''}`;
+  }
+
+  // Scoring requests
+  if (toAgent.toLowerCase().includes('scor') && c.pitch_id) {
+    return `Score pitch ${String(c.pitch_id).substring(0, 8)}...`;
+  }
+
+  // Refinement requests
+  if (toAgent.toLowerCase().includes('refin') && (c.pitch_id || c.pitch)) {
+    const feedback = c.feedback ? ` — Feedback: ${String(c.feedback).substring(0, 80)}` : '';
+    return `Refine pitch${c.pitch_id ? ' ' + String(c.pitch_id).substring(0, 8) + '...' : ''}${feedback}`;
+  }
+
+  // Response messages with result/output
+  if (type === 'response' && (c.result || c.output || c.score !== undefined)) {
+    if (c.score !== undefined) return `Score: ${c.score}${c.feedback ? ' — ' + String(c.feedback).substring(0, 100) : ''}`;
+    const result = c.result ?? c.output;
+    if (typeof result === 'string') return result.substring(0, 200);
+    return `Result: ${JSON.stringify(result).substring(0, 180)}`;
+  }
+
+  // Fallback: show keys summary and first string value
+  const keys = Object.keys(c);
+  const firstStr = keys.find(k => typeof c[k] === 'string' && String(c[k]).length > 10);
+  if (firstStr) {
+    return `${keys.join(', ')}: ${String(c[firstStr]).substring(0, 150)}${String(c[firstStr]).length > 150 ? '...' : ''}`;
+  }
+  return keys.length > 0 ? `Fields: ${keys.join(', ')}` : JSON.stringify(c).substring(0, 200);
+}
+
+const MESSAGE_TYPE_LABELS: Record<string, { label: string; color: string }> = {
+  request: { label: 'Request', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+  response: { label: 'Response', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
+  delegate: { label: 'Delegate', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  broadcast: { label: 'Broadcast', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
+};
+
 const AGENT_ICONS: Record<string, React.ReactNode> = {
   research: <Search className="h-5 w-5" />,
   pitch_generation: <FileText className="h-5 w-5" />,
@@ -282,9 +341,12 @@ export default function AgentDashboard() {
                   <span className="rounded-full bg-blue-100 px-2 py-0.5 font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">{msg.from_agent_name ?? msg.from_agent}</span>
                   <ChevronRight className="h-3 w-3 text-gray-400" />
                   <span className="rounded-full bg-purple-100 px-2 py-0.5 font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">{msg.to_agent_name ?? msg.to_agent}</span>
-                  <span className="ml-auto rounded-full bg-gray-100 px-2 py-0.5 text-gray-600 dark:bg-gray-700 dark:text-gray-300">{msg.message_type ?? 'message'}</span>
+                  {(() => {
+                    const mt = MESSAGE_TYPE_LABELS[msg.message_type];
+                    return <span className={clsx('ml-auto rounded-full px-2 py-0.5 text-xs font-medium', mt?.color ?? 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300')}>{mt?.label ?? msg.message_type ?? 'message'}</span>;
+                  })()}
                 </div>
-                <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 line-clamp-2">{typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)?.substring(0, 200)}</p>
+                <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 line-clamp-2">{formatMessageContent(msg)}</p>
                 {msg.created_at && <p className="mt-1 text-[10px] text-gray-400">{format(new Date(msg.created_at), 'MMM d, h:mm:ss a')}</p>}
               </div>
             ))}

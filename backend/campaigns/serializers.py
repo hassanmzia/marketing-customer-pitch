@@ -40,9 +40,45 @@ class CampaignSerializer(serializers.ModelSerializer):
 class CampaignDetailSerializer(CampaignSerializer):
     """Serializer for Campaign detail with nested targets."""
     targets = CampaignTargetSerializer(many=True, read_only=True)
+    open_rate = serializers.SerializerMethodField()
+    response_rate = serializers.SerializerMethodField()
+    conversion_rate = serializers.SerializerMethodField()
+    budget_usage = serializers.SerializerMethodField()
 
     class Meta(CampaignSerializer.Meta):
-        fields = CampaignSerializer.Meta.fields + ['targets']
+        fields = CampaignSerializer.Meta.fields + [
+            'targets', 'open_rate', 'response_rate', 'conversion_rate', 'budget_usage',
+        ]
+
+    def _target_rate(self, obj, statuses):
+        total = obj.targets.count()
+        if total == 0:
+            return 0
+        return obj.targets.filter(status__in=statuses).count() / total
+
+    def get_open_rate(self, obj):
+        stored = (obj.metrics or {}).get('open_rate')
+        if stored is not None:
+            return stored
+        return self._target_rate(obj, ['pitched', 'responded', 'converted'])
+
+    def get_response_rate(self, obj):
+        stored = (obj.metrics or {}).get('response_rate')
+        if stored is not None:
+            return stored
+        return self._target_rate(obj, ['responded', 'converted'])
+
+    def get_conversion_rate(self, obj):
+        stored = (obj.metrics or {}).get('conversion_rate')
+        if stored is not None:
+            return stored
+        return self._target_rate(obj, ['converted'])
+
+    def get_budget_usage(self, obj):
+        stored = (obj.metrics or {}).get('budget_usage')
+        if stored is not None:
+            return stored
+        return 0
 
 
 class AddTargetsSerializer(serializers.Serializer):
