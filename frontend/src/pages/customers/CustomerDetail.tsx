@@ -72,6 +72,9 @@ export default function CustomerDetail() {
     queryKey: ['customer360', id],
     queryFn: () => customerApi.get360(id!),
     enabled: !!id && activeTab === '360\u00B0 View',
+    // Poll every 5 s while enrichment is still running so data appears automatically
+    refetchInterval:
+      customer360Data?.enrichment_status === 'in_progress' ? 5000 : false,
   });
 
   const toggleSection = (key: string) => {
