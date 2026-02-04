@@ -64,6 +64,16 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
+// PATCH /api/v1/pitches/:id - Partially update pitch
+router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await backendProxy.patch(`/api/v1/pitches/${req.params.id}/`, req.body);
+    res.status(result.status).json(result.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // DELETE /api/v1/pitches/:id - Delete pitch
 router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
