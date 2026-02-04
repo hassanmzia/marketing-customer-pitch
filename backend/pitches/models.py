@@ -14,6 +14,9 @@ class Pitch(BaseModel):
 
     class PitchType(models.TextChoices):
         INITIAL = 'initial', 'Initial'
+        FOLLOW_UP = 'follow_up', 'Follow-up'
+        PRODUCT_DEMO = 'product_demo', 'Product Demo'
+        RENEWAL = 'renewal', 'Renewal'
         REFINED = 'refined', 'Refined'
         FINAL = 'final', 'Final'
         AB_VARIANT = 'ab_variant', 'A/B Variant'

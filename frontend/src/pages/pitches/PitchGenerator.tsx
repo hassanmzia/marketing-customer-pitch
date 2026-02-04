@@ -70,7 +70,13 @@ const PITCH_TYPES = [
   },
 ];
 
-const TONES = ['Professional', 'Casual', 'Friendly', 'Urgent', 'Consultative'];
+const TONES = [
+  { value: 'professional', label: 'Professional' },
+  { value: 'casual', label: 'Casual' },
+  { value: 'friendly', label: 'Friendly' },
+  { value: 'urgent', label: 'Urgent' },
+  { value: 'consultative', label: 'Consultative' },
+];
 
 const QUICK_FEEDBACK = [
   'More concise',
@@ -190,7 +196,7 @@ const PitchGenerator: React.FC = () => {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [pitchConfig, setPitchConfig] = useState<PitchConfig>({
     type: 'initial',
-    tone: 'Professional',
+    tone: 'professional',
     templateId: '',
     context: '',
   });
@@ -887,12 +893,12 @@ const PitchGenerator: React.FC = () => {
         </label>
         <div className="flex flex-wrap gap-2">
           {TONES.map((tone) => {
-            const isActive = pitchConfig.tone === tone;
+            const isActive = pitchConfig.tone === tone.value;
             return (
               <button
-                key={tone}
+                key={tone.value}
                 onClick={() =>
-                  setPitchConfig((prev) => ({ ...prev, tone }))
+                  setPitchConfig((prev) => ({ ...prev, tone: tone.value }))
                 }
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                   isActive
@@ -900,7 +906,7 @@ const PitchGenerator: React.FC = () => {
                     : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                 }`}
               >
-                {tone}
+                {tone.label}
               </button>
             );
           })}
@@ -1605,7 +1611,7 @@ const PitchGenerator: React.FC = () => {
                     setVersionHistory([]);
                     setPitchConfig({
                       type: 'initial',
-                      tone: 'Professional',
+                      tone: 'professional',
                       templateId: '',
                       context: '',
                     });
