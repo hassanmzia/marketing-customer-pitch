@@ -33,7 +33,7 @@ services:
     container_name: pitch-redis
     restart: unless-stopped
     ports:
-      - "${REDIS_PORT:-6479}:6379"
+      - "${REDIS_PORT:-6579}:6379"
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
