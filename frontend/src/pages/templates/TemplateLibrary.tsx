@@ -27,7 +27,7 @@ export default function TemplateLibrary() {
   const queryClient = useQueryClient();
   const [previewTemplate, setPreviewTemplate] = useState<PitchTemplate | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newTemplate, setNewTemplate] = useState({ name: '', description: '', template_content: '', industry_focus: '', pitch_type: 'initial' as const });
+  const [newTemplate, setNewTemplate] = useState({ name: '', description: '', template_content: '', industry_focus: '', pitch_type: 'initial' });
 
   const { data: templates, isLoading } = useQuery<any>({
     queryKey: ['templates'],
@@ -39,7 +39,7 @@ export default function TemplateLibrary() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['templates'] });
       setShowCreateModal(false);
-      setNewTemplate({ name: '', description: '', content: '', industry: '', pitch_type: 'initial' });
+      setNewTemplate({ name: '', description: '', template_content: '', industry_focus: '', pitch_type: 'initial' });
       toast.success('Template created!');
     },
     onError: (error: any) => toast.error(error?.message ?? 'Failed to create template'),
