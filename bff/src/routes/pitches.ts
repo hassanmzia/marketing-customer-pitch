@@ -1,6 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import axios from 'axios';
 import backendProxy from '../services/backendProxy.js';
 import wsService from '../services/websocket.js';
+import config from '../config.js';
 
 const router = Router();
 
@@ -189,8 +191,6 @@ router.get('/:id/export', async (req: Request, res: Response, next: NextFunction
 
     // PDF requires binary proxy with arraybuffer response
     if (format === 'pdf') {
-      const axios = (await import('axios')).default;
-      const config = (await import('../config.js')).default;
       const pdfRes = await axios.get(
         `${config.backendUrl}/api/v1/pitches/${req.params.id}/export/`,
         { params: { format: 'pdf' }, responseType: 'arraybuffer', timeout: 30_000 },
