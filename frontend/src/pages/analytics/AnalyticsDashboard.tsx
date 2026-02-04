@@ -32,7 +32,7 @@ export default function AnalyticsDashboard() {
 
   const { data: analytics, isLoading } = useQuery<any>({
     queryKey: ['analytics', dateRange],
-    queryFn: () => analyticsApi.getAnalytics({ range: dateRange }),
+    queryFn: () => analyticsApi.dashboard(),
   });
 
   const { data: pitchAnalytics } = useQuery<any>({
@@ -42,7 +42,7 @@ export default function AnalyticsDashboard() {
 
   const { data: agentPerformance } = useQuery<any>({
     queryKey: ['agent-performance', dateRange],
-    queryFn: () => analyticsApi.agentPerformance({ range: dateRange }),
+    queryFn: () => analyticsApi.agentPerformance(),
   });
 
   const kpis = [

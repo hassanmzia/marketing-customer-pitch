@@ -54,7 +54,7 @@ export default function AgentDashboard() {
 
   const { data: agents, isLoading: agentsLoading } = useQuery<any>({
     queryKey: ['agents'],
-    queryFn: () => agentApi.list(),
+    queryFn: () => agentApi.getConfigs(),
   });
 
   const { data: executions } = useQuery<any>({
@@ -64,7 +64,7 @@ export default function AgentDashboard() {
 
   const { data: messages } = useQuery<any>({
     queryKey: ['a2a-messages', messageFilter],
-    queryFn: () => agentApi.listMessages({ agent: messageFilter || undefined, limit: 20 }),
+    queryFn: () => agentApi.getA2AMessages({ agent: messageFilter || undefined, limit: 20 }),
   });
 
   const { data: customers } = useQuery<any>({
@@ -73,7 +73,7 @@ export default function AgentDashboard() {
   });
 
   const orchestrateMutation = useMutation({
-    mutationFn: (customerId: string) => agentApi.orchestrate({ customer_id: customerId }),
+    mutationFn: (customerId: string) => agentApi.orchestrate({ task: 'generate_pitch', customer_id: customerId }),
     onSuccess: (data: any) => {
       toast.success('Pipeline started!');
       setPipelineRunning(true);
@@ -83,7 +83,7 @@ export default function AgentDashboard() {
       if (pollingRef.current) clearInterval(pollingRef.current);
       pollingRef.current = setInterval(async () => {
         try {
-          const status = await agentApi.getOrchestrationStatus(data.id ?? data.execution_id);
+          const status = await agentApi.getExecution(data.id ?? data.execution_id) as any;
           setPipelineLogs(status.logs ?? status.steps ?? []);
           if (status.status === 'completed' || status.status === 'failed') {
             setPipelineRunning(false);
