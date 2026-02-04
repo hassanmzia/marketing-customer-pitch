@@ -34,12 +34,31 @@ function formatMessageContent(msg: any): string {
   const c = msg.content ?? msg.payload;
   if (!c || typeof c !== 'object') return typeof c === 'string' ? c : JSON.stringify(c);
 
+  // If the backend provides a human-readable summary, use it
+  if (c.summary && typeof c.summary === 'string') return c.summary;
+
   const type = msg.message_type;
   const toAgent = msg.to_agent_name ?? '';
 
+  // Response messages
+  if (type === 'response') {
+    if (c.average_score !== undefined) {
+      const pct = `${Math.round(Number(c.average_score) * 100)}%`;
+      return `Scored pitch — Average: ${pct}`;
+    }
+    if (c.title) return `Generated pitch: "${c.title}"`;
+    if (c.source) return `Research completed via ${c.source}`;
+    if (c.status === 'failed' && c.error) return `Failed: ${String(c.error).substring(0, 120)}`;
+    if (c.result || c.output) {
+      const result = c.result ?? c.output;
+      return typeof result === 'string' ? result.substring(0, 200) : `Result: ${JSON.stringify(result).substring(0, 180)}`;
+    }
+  }
+
   // Research requests
-  if (toAgent.toLowerCase().includes('research') && c.customer_id) {
-    return `Requesting customer research for ID ${String(c.customer_id).substring(0, 8)}...`;
+  if (toAgent.toLowerCase().includes('research') && (c.customer_name || c.customer_id)) {
+    const name = c.customer_name ?? c.company ?? `ID ${String(c.customer_id).substring(0, 8)}...`;
+    return `Research customer: ${name}${c.company && c.customer_name ? ` (${c.company})` : ''}`;
   }
 
   // Pitch generation delegate
@@ -60,14 +79,6 @@ function formatMessageContent(msg: any): string {
   if (toAgent.toLowerCase().includes('refin') && (c.pitch_id || c.pitch)) {
     const feedback = c.feedback ? ` — Feedback: ${String(c.feedback).substring(0, 80)}` : '';
     return `Refine pitch${c.pitch_id ? ' ' + String(c.pitch_id).substring(0, 8) + '...' : ''}${feedback}`;
-  }
-
-  // Response messages with result/output
-  if (type === 'response' && (c.result || c.output || c.score !== undefined)) {
-    if (c.score !== undefined) return `Score: ${c.score}${c.feedback ? ' — ' + String(c.feedback).substring(0, 100) : ''}`;
-    const result = c.result ?? c.output;
-    if (typeof result === 'string') return result.substring(0, 200);
-    return `Result: ${JSON.stringify(result).substring(0, 180)}`;
   }
 
   // Fallback: show keys summary and first string value
