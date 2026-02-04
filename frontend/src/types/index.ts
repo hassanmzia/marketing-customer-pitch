@@ -243,8 +243,9 @@ export interface A2AMessage {
   from_agent_name?: string;
   to_agent: string;
   to_agent_name?: string;
-  message_type: 'task_request' | 'task_response' | 'status_update' | 'data_share' | 'error';
+  message_type: 'task_request' | 'task_response' | 'status_update' | 'data_share' | 'error' | 'request' | 'response' | 'broadcast' | 'delegate';
   content: Record<string, unknown>;
+  payload?: Record<string, unknown>;
   correlation_id?: string;
   status: 'sent' | 'received' | 'processed' | 'failed';
   created_at: string;

@@ -14,10 +14,40 @@ router.get('/configs', async (req: Request, res: Response, next: NextFunction) =
   }
 });
 
+// GET /api/v1/agents/configs/:id - Get agent configuration detail
+router.get('/configs/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await backendProxy.get(`/api/v1/agents/configs/${req.params.id}/`);
+    res.status(result.status).json(result.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PATCH /api/v1/agents/configs/:id - Update agent configuration
+router.patch('/configs/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await backendProxy.patch(`/api/v1/agents/configs/${req.params.id}/`, req.body);
+    res.status(result.status).json(result.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // GET /api/v1/agents/executions - List agent executions
 router.get('/executions', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await backendProxy.get('/api/v1/agents/executions/', req.query as Record<string, unknown>);
+    res.status(result.status).json(result.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/v1/agents/executions/:id - Get execution detail (for polling)
+router.get('/executions/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await backendProxy.get(`/api/v1/agents/executions/${req.params.id}/`);
     res.status(result.status).json(result.data);
   } catch (error) {
     next(error);

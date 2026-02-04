@@ -49,13 +49,14 @@ class A2AMessageSerializer(serializers.ModelSerializer):
     """Serializer for A2A messages."""
     from_agent_name = serializers.CharField(source='from_agent.name', read_only=True)
     to_agent_name = serializers.CharField(source='to_agent.name', read_only=True)
+    content = serializers.JSONField(source='payload', read_only=True)
     reply_count = serializers.SerializerMethodField()
 
     class Meta:
         model = A2AMessage
         fields = [
             'id', 'from_agent', 'from_agent_name', 'to_agent', 'to_agent_name',
-            'message_type', 'payload', 'correlation_id', 'status',
+            'message_type', 'payload', 'content', 'correlation_id', 'status',
             'parent_message', 'reply_count',
             'created_at', 'updated_at', 'is_active',
         ]
