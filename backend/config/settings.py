@@ -293,4 +293,7 @@ LOGGING = {
 }
 
 # Ensure log directory exists
-(BASE_DIR / 'logs').mkdir(exist_ok=True)
+try:
+    (BASE_DIR / 'logs').mkdir(exist_ok=True)
+except PermissionError:
+    pass

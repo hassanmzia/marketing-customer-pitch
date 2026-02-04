@@ -28,7 +28,7 @@ COPY . .
 # Create non-root user for security
 RUN addgroup --system appgroup && \
     adduser --system --ingroup appgroup appuser && \
-    mkdir -p /app/staticfiles /app/media && \
+    mkdir -p /app/staticfiles /app/media /app/logs && \
     chown -R appuser:appgroup /app
 
 USER appuser
