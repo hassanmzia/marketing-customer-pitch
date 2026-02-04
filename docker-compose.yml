@@ -122,7 +122,8 @@ services:
       dockerfile: Dockerfile
     container_name: pitch-celery-worker
     restart: unless-stopped
-    command: celery -A config worker -l info --concurrency=2 -Q default,pitches,analytics
+    entrypoint: []
+    command: ["celery", "-A", "config", "worker", "-l", "info", "--concurrency=2", "-Q", "default,pitches,analytics"]
     env_file:
       - .env
     environment:
@@ -155,7 +156,8 @@ services:
       dockerfile: Dockerfile
     container_name: pitch-celery-beat
     restart: unless-stopped
-    command: celery -A config beat -l info --schedule=/tmp/celerybeat-schedule --pidfile=/tmp/celerybeat.pid
+    entrypoint: []
+    command: ["celery", "-A", "config", "beat", "-l", "info", "--schedule=/tmp/celerybeat-schedule", "--pidfile=/tmp/celerybeat.pid"]
     env_file:
       - .env
     environment:
@@ -188,7 +190,8 @@ services:
       dockerfile: Dockerfile
     container_name: pitch-flower
     restart: unless-stopped
-    command: celery -A config flower --port=5555 --broker_api=redis://redis:6379/1
+    entrypoint: []
+    command: ["celery", "-A", "config", "flower", "--port=5555", "--broker_api=redis://redis:6379/1"]
     ports:
       - "${FLOWER_PORT:-5564}:5555"
     env_file:
