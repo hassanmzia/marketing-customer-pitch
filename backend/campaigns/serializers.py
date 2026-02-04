@@ -78,7 +78,14 @@ class CampaignDetailSerializer(CampaignSerializer):
         stored = (obj.metrics or {}).get('budget_usage')
         if stored is not None:
             return stored
-        return 0
+        # Estimate budget usage based on pitched targets
+        if not obj.budget or obj.budget == 0:
+            return 0
+        total = obj.targets.count()
+        if total == 0:
+            return 0
+        pitched = obj.targets.exclude(status='pending').count()
+        return pitched / total
 
 
 class AddTargetsSerializer(serializers.Serializer):

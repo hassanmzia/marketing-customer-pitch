@@ -70,6 +70,16 @@ export default function CampaignDetail() {
     onError: () => toast.error('Failed to add targets'),
   });
 
+  const updateTargetStatusMutation = useMutation({
+    mutationFn: ({ targetId, status }: { targetId: string; status: string }) =>
+      campaignApi.updateTargetStatus(targetId, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaign', id] });
+      toast.success('Target status updated');
+    },
+    onError: () => toast.error('Failed to update target status'),
+  });
+
   if (isLoading) return <div className="flex justify-center py-16"><LoadingSpinner /></div>;
   if (!campaign) return <div className="py-16 text-center text-red-500">Campaign not found.</div>;
 
@@ -157,7 +167,24 @@ export default function CampaignDetail() {
                 {targets.map((t: any, idx: number) => (
                   <tr key={t.customer_id ?? idx}>
                     <td className="py-2 font-medium text-gray-900 dark:text-white">{t.customer_name ?? t.name ?? 'Customer'}</td>
-                    <td className="py-2"><StatusBadge status={t.status ?? 'pending'} /></td>
+                    <td className="py-2">
+                      <select
+                        value={t.status ?? 'pending'}
+                        onChange={(e) =>
+                          updateTargetStatusMutation.mutate({
+                            targetId: t.id,
+                            status: e.target.value,
+                          })
+                        }
+                        className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 focus:border-indigo-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="pitched">Pitched</option>
+                        <option value="responded">Responded</option>
+                        <option value="converted">Converted</option>
+                        <option value="rejected">Rejected</option>
+                      </select>
+                    </td>
                     <td className="py-2 text-gray-500">{t.pitched_at ? format(new Date(t.pitched_at), 'MMM d') : '--'}</td>
                     <td className="py-2 text-gray-500">{(t.responded_at || t.response_at) ? format(new Date(t.responded_at || t.response_at), 'MMM d') : '--'}</td>
                   </tr>
