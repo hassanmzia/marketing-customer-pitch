@@ -68,6 +68,12 @@ export default function CustomerDetail() {
     enabled: !!id && activeTab === 'Pitches',
   });
 
+  const { data: customer360Data, isLoading: is360Loading } = useQuery<any>({
+    queryKey: ['customer360', id],
+    queryFn: () => customerApi.get360(id!),
+    enabled: !!id && activeTab === '360\u00B0 View',
+  });
+
   const toggleSection = (key: string) => {
     setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
@@ -470,43 +476,82 @@ export default function CustomerDetail() {
 
         {activeTab === '360\u00B0 View' && (
           <div>
-            {Object.keys(customer360).length === 0 ? (
-              <EmptyState
-                title="No 360\u00B0 data available"
-                description="Customer 360 data will be populated by the AI agents"
-              />
-            ) : (
-              <div className="space-y-4">
-                {Object.entries(customer360).map(([section, data]) => (
-                  <Card key={section} className="overflow-hidden">
-                    <button
-                      onClick={() => toggleSection(section)}
-                      className="flex w-full items-center justify-between p-5 text-left transition hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                    >
-                      <h3 className="text-sm font-semibold capitalize text-gray-900 dark:text-white">
-                        {section.replace(/_/g, ' ')}
-                      </h3>
-                      {expandedSections[section] ? (
-                        <ChevronDown className="h-4 w-4 text-gray-400" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 text-gray-400" />
-                      )}
-                    </button>
-                    {expandedSections[section] && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        className="border-t border-gray-100 p-5 dark:border-gray-800"
-                      >
-                        <pre className="whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-300">
-                          {typeof data === 'string' ? data : JSON.stringify(data, null, 2)}
-                        </pre>
-                      </motion.div>
-                    )}
-                  </Card>
-                ))}
+            {is360Loading ? (
+              <div className="flex justify-center py-12">
+                <LoadingSpinner />
               </div>
-            )}
+            ) : (() => {
+              const c360 = customer360Data?.customer_360_data ?? customer360;
+              const pitchSummary = customer360Data?.pitch_summary;
+              const enrichmentStatus = customer360Data?.enrichment_status;
+              const hasSections = Object.keys(c360).length > 0;
+
+              return !hasSections && !pitchSummary ? (
+                <EmptyState
+                  title="No 360\u00B0 data available"
+                  description={
+                    enrichmentStatus === 'in_progress'
+                      ? 'Customer 360 enrichment has been triggered \u2014 refresh in a few moments.'
+                      : 'Customer 360 data will be populated by the AI agents'
+                  }
+                />
+              ) : (
+                <div className="space-y-4">
+                  {pitchSummary && (
+                    <Card className="p-5">
+                      <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">Pitch Summary</h3>
+                      <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-500 dark:text-gray-400">Total Pitches</span>
+                          <p className="text-lg font-semibold text-gray-900 dark:text-white">{pitchSummary.total_pitches}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 dark:text-gray-400">Approved</span>
+                          <p className="text-lg font-semibold text-emerald-600">{pitchSummary.approved_pitches}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 dark:text-gray-400">Avg Score</span>
+                          <p className="text-lg font-semibold text-indigo-600">{pitchSummary.average_score ?? '\u2014'}</p>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+                  {enrichmentStatus === 'in_progress' && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                      AI enrichment is in progress. Refresh the page shortly to see updated data.
+                    </div>
+                  )}
+                  {Object.entries(c360).map(([section, data]) => (
+                    <Card key={section} className="overflow-hidden">
+                      <button
+                        onClick={() => toggleSection(section)}
+                        className="flex w-full items-center justify-between p-5 text-left transition hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                      >
+                        <h3 className="text-sm font-semibold capitalize text-gray-900 dark:text-white">
+                          {section.replace(/_/g, ' ')}
+                        </h3>
+                        {expandedSections[section] ? (
+                          <ChevronDown className="h-4 w-4 text-gray-400" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 text-gray-400" />
+                        )}
+                      </button>
+                      {expandedSections[section] && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          className="border-t border-gray-100 p-5 dark:border-gray-800"
+                        >
+                          <pre className="whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-300">
+                            {typeof data === 'string' ? data : JSON.stringify(data, null, 2)}
+                          </pre>
+                        </motion.div>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
       </motion.div>

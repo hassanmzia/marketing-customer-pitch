@@ -23,20 +23,24 @@ router.get('/search', async (req: Request, res: Response, next: NextFunction) =>
   }
 });
 
-// GET /api/v1/customers/:id - Customer detail
-router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
+// --- Routes with /:id/sub-path MUST come before the bare /:id routes ---
+
+// GET /api/v1/customers/:id/customer-360 - Customer 360 view
+router.get('/:id/customer-360', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await backendProxy.get(`/api/v1/customers/${req.params.id}/`);
+    const result = await backendProxy.get(`/api/v1/customers/${req.params.id}/customer-360/`);
     res.status(result.status).json(result.data);
   } catch (error) {
     next(error);
   }
 });
 
-// GET /api/v1/customers/:id/customer-360 - Customer 360 view
-router.get('/:id/customer-360', async (req: Request, res: Response, next: NextFunction) => {
+// --- Bare /:id routes LAST ---
+
+// GET /api/v1/customers/:id - Customer detail
+router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await backendProxy.get(`/api/v1/customers/${req.params.id}/customer-360/`);
+    const result = await backendProxy.get(`/api/v1/customers/${req.params.id}/`);
     res.status(result.status).json(result.data);
   } catch (error) {
     next(error);
