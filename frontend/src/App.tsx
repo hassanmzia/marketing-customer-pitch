@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
 
 // Pages
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
@@ -27,26 +28,28 @@ const PageLoader: React.FC = () => (
 
 const App: React.FC = () => {
   return (
-    <Suspense fallback={<PageLoader />}>
-      <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/customers" element={<CustomerList />} />
-          <Route path="/customers/new" element={<CustomerCreate />} />
-          <Route path="/customers/:id" element={<CustomerDetail />} />
-          <Route path="/pitches" element={<PitchList />} />
-          <Route path="/pitches/new" element={<PitchGenerator />} />
-          <Route path="/pitches/:id" element={<PitchDetail />} />
-          <Route path="/campaigns" element={<CampaignList />} />
-          <Route path="/campaigns/new" element={<CampaignCreate />} />
-          <Route path="/campaigns/:id" element={<CampaignDetail />} />
-          <Route path="/agents" element={<AgentDashboard />} />
-          <Route path="/analytics" element={<AnalyticsDashboard />} />
-          <Route path="/mcp-tools" element={<MCPToolExplorer />} />
-          <Route path="/templates" element={<TemplateLibrary />} />
-        </Route>
-      </Routes>
-    </Suspense>
+    <ErrorBoundary>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/customers" element={<CustomerList />} />
+            <Route path="/customers/new" element={<CustomerCreate />} />
+            <Route path="/customers/:id" element={<CustomerDetail />} />
+            <Route path="/pitches" element={<PitchList />} />
+            <Route path="/pitches/new" element={<PitchGenerator />} />
+            <Route path="/pitches/:id" element={<PitchDetail />} />
+            <Route path="/campaigns" element={<CampaignList />} />
+            <Route path="/campaigns/new" element={<CampaignCreate />} />
+            <Route path="/campaigns/:id" element={<CampaignDetail />} />
+            <Route path="/agents" element={<AgentDashboard />} />
+            <Route path="/analytics" element={<AnalyticsDashboard />} />
+            <Route path="/mcp-tools" element={<MCPToolExplorer />} />
+            <Route path="/templates" element={<TemplateLibrary />} />
+          </Route>
+        </Routes>
+      </Suspense>
+    </ErrorBoundary>
   );
 };
 
