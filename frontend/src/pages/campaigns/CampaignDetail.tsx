@@ -48,13 +48,13 @@ export default function CampaignDetail() {
   });
 
   const launchMutation = useMutation({
-    mutationFn: () => campaignApi.update(id!, { status: 'active' }),
+    mutationFn: () => campaignApi.launch(id!),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['campaign', id] }); toast.success('Campaign launched!'); },
     onError: () => toast.error('Failed to launch campaign'),
   });
 
   const pauseMutation = useMutation({
-    mutationFn: () => campaignApi.update(id!, { status: 'paused' }),
+    mutationFn: () => campaignApi.pause(id!),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['campaign', id] }); toast.success('Campaign paused'); },
     onError: () => toast.error('Failed to pause campaign'),
   });

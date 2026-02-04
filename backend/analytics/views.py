@@ -181,19 +181,21 @@ class PitchAnalyticsViewSet(viewsets.ModelViewSet):
             ).count()
             score_distribution.append({'range': label, 'count': cnt})
 
-        # Top pitches by score
+        # Top pitches by score – average_score is a @property, not a DB
+        # field, so annotate with the mean of related PitchScore rows.
         top_pitches = []
         top_scored = (
-            Pitch.objects.filter(is_active=True, average_score__isnull=False)
+            Pitch.objects.filter(is_active=True, pitch_scores__isnull=False)
             .select_related('customer')
-            .order_by('-average_score')[:5]
+            .annotate(avg_score=Avg('pitch_scores__score'))
+            .order_by('-avg_score')[:5]
         )
         for p in top_scored:
             top_pitches.append({
                 'id': str(p.id),
                 'title': p.title,
-                'customer_name': p.customer.name if p.customer else '',
-                'overall_score': p.average_score,
+                'customer_name': getattr(p.customer, 'name', '') if p.customer else '',
+                'overall_score': p.avg_score,
                 'pitch_type': p.pitch_type,
                 'created_at': p.created_at.isoformat() if p.created_at else None,
             })
