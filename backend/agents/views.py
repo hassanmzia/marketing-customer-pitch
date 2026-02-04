@@ -78,12 +78,21 @@ class AgentExecutionViewSet(viewsets.ReadOnlyModelViewSet):
 
 class A2AMessageViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet for viewing A2A messages (read-only)."""
-    queryset = A2AMessage.objects.all().select_related('from_agent', 'to_agent')
+    queryset = A2AMessage.objects.all().select_related('from_agent', 'to_agent').order_by('-created_at')
     serializer_class = A2AMessageSerializer
     # TODO: Replace AllowAny with proper authentication/authorization
     permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['from_agent', 'to_agent', 'message_type', 'status', 'correlation_id']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # Support ?agent=<id> to filter messages where agent is sender OR receiver
+        agent_id = self.request.query_params.get('agent')
+        if agent_id:
+            from django.db.models import Q
+            qs = qs.filter(Q(from_agent_id=agent_id) | Q(to_agent_id=agent_id))
+        return qs
 
 
 @api_view(['POST'])
