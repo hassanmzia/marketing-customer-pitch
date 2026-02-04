@@ -22,3 +22,5 @@ whitenoise==6.8.2
 flower==2.0.1
 pydantic>=2.11.0,<3.0.0
 httpx==0.28.1
+xhtml2pdf==0.2.17
+markdown==3.7
