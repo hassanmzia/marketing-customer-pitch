@@ -61,8 +61,8 @@ mcpClient.interceptors.response.use(
  * Decode the MCP response body.  Handles both application/json and
  * text/event-stream content types transparently.
  */
-function decodeMCPResponse(response: { data: unknown; headers: Record<string, string> }): unknown {
-  const ct = (response.headers['content-type'] || '').toLowerCase();
+function decodeMCPResponse(response: { data: unknown; headers: Record<string, unknown> }): unknown {
+  const ct = String(response.headers['content-type'] || '').toLowerCase();
   const raw = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
 
   if (ct.includes('text/event-stream')) {
