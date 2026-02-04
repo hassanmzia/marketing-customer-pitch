@@ -57,37 +57,35 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
 // POST /api/v1/pitches/generate - Trigger pitch generation via AI agents
 router.post('/generate', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { customerId, parameters } = req.body as {
-      customerId: string;
-      parameters?: Record<string, unknown>;
-    };
+    const customerId = (req.body as Record<string, string>)?.customer_id;
 
     // Notify WebSocket clients that generation has started
-    wsService.broadcastPitchProgress(customerId, {
-      step: 'initiated',
-      percentage: 0,
-      message: 'Pitch generation initiated',
-    });
+    if (customerId) {
+      wsService.broadcastPitchProgress(customerId, {
+        step: 'initiated',
+        percentage: 0,
+        message: 'Pitch generation initiated',
+      });
+    }
 
     // Use AI timeout for this long-running operation
-    const result = await backendProxy.postAI('/api/v1/pitches/generate/', {
-      customer_id: customerId,
-      parameters,
-    });
+    const result = await backendProxy.postAI('/api/v1/pitches/generate/', req.body);
 
     const responseData = result.data as Record<string, unknown>;
 
     // Notify WebSocket clients that generation is complete
-    wsService.broadcastPitchProgress(customerId, {
-      step: 'completed',
-      percentage: 100,
-      message: 'Pitch generation completed',
-    });
+    if (customerId) {
+      wsService.broadcastPitchProgress(customerId, {
+        step: 'completed',
+        percentage: 100,
+        message: 'Pitch generation completed',
+      });
+    }
 
     res.status(result.status).json(responseData);
   } catch (error) {
     // Notify of failure via WebSocket
-    const customerId = (req.body as Record<string, string>)?.customerId;
+    const customerId = (req.body as Record<string, string>)?.customer_id;
     if (customerId) {
       wsService.broadcastPitchProgress(customerId, {
         step: 'failed',
