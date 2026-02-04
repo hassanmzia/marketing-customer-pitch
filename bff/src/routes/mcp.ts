@@ -52,7 +52,7 @@ const STATIC_TOOLS = [
 router.get('/tools', async (req: Request, res: Response, next: NextFunction) => {
   try {
     // Try MCP server via JSON-RPC
-    const response = await mcpClient.post('/', {
+    const response = await mcpClient.post('', {
       jsonrpc: '2.0',
       method: 'tools/list',
       id: '1',
@@ -69,7 +69,7 @@ router.get('/tools', async (req: Request, res: Response, next: NextFunction) => 
 // POST /api/v1/mcp/tools - Also support POST for listing tools
 router.post('/tools', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await mcpClient.post('/', {
+    const response = await mcpClient.post('', {
       jsonrpc: '2.0',
       method: 'tools/list',
       id: '1',
@@ -98,7 +98,7 @@ router.post('/tools/execute', async (req: Request, res: Response, next: NextFunc
 
     console.log(`[MCP] Executing tool: ${tool_name}`, { arguments: args });
 
-    const response = await mcpClient.post('/', {
+    const response = await mcpClient.post('', {
       jsonrpc: '2.0',
       method: 'tools/call',
       params: {
@@ -111,8 +111,12 @@ router.post('/tools/execute', async (req: Request, res: Response, next: NextFunc
     const result = response.data?.result ?? response.data;
     res.json({ result });
   } catch (error) {
-    if (axios.isAxiosError(error) && error.code === 'ECONNREFUSED') {
-      next(new AppError('MCP server is unavailable', 503, 'MCP_UNAVAILABLE'));
+    if (axios.isAxiosError(error)) {
+      const mcpStatus = error.response?.status;
+      const msg = error.code === 'ECONNREFUSED'
+        ? 'MCP server is unavailable'
+        : `MCP tool execution failed (${mcpStatus || error.message})`;
+      next(new AppError(msg, 502, 'MCP_ERROR'));
       return;
     }
     next(error);
@@ -137,7 +141,7 @@ router.post('/execute', async (req: Request, res: Response, next: NextFunction) 
 
     console.log(`[MCP] Executing tool: ${name}`, { arguments: parameters || args });
 
-    const response = await mcpClient.post('/', {
+    const response = await mcpClient.post('', {
       jsonrpc: '2.0',
       method: 'tools/call',
       params: {
@@ -150,8 +154,12 @@ router.post('/execute', async (req: Request, res: Response, next: NextFunction) 
     const result = response.data?.result ?? response.data;
     res.json({ result });
   } catch (error) {
-    if (axios.isAxiosError(error) && error.code === 'ECONNREFUSED') {
-      next(new AppError('MCP server is unavailable', 503, 'MCP_UNAVAILABLE'));
+    if (axios.isAxiosError(error)) {
+      const mcpStatus = error.response?.status;
+      const msg = error.code === 'ECONNREFUSED'
+        ? 'MCP server is unavailable'
+        : `MCP tool execution failed (${mcpStatus || error.message})`;
+      next(new AppError(msg, 502, 'MCP_ERROR'));
       return;
     }
     next(error);
