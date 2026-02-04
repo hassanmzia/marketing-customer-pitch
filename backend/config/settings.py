@@ -157,6 +157,10 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.BrowsableAPIRenderer',
     ],
     'DATETIME_FORMAT': '%Y-%m-%dT%H:%M:%S.%fZ',
+    # Disable DRF's format query parameter override so that views can
+    # freely use ?format= for their own purposes (e.g. export?format=pdf)
+    # without colliding with DRF's content-negotiation machinery.
+    'URL_FORMAT_OVERRIDE': None,
 }
 
 # ---------------------------------------------------------------------------
