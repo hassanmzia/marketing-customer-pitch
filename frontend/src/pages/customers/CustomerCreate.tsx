@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
+import { Customer } from '@/types';
 import { customerApi } from '@/services/api';
 import Card from '@/components/common/Card';
 
@@ -69,7 +70,7 @@ export default function CustomerCreate() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: Partial<FormData>) => customerApi.create(data),
+    mutationFn: (data: Partial<FormData>) => customerApi.create(data as Partial<Customer>),
     onSuccess: (result: any) => {
       toast.success('Customer created!');
       navigate(`/customers/${result.id}`);
