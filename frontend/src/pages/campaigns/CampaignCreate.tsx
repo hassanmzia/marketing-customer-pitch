@@ -22,8 +22,8 @@ import Card from '@/components/common/Card';
 const CAMPAIGN_TYPES = [
   { value: 'email', label: 'Email Campaign', icon: Mail, description: 'Targeted email outreach' },
   { value: 'social', label: 'Social Media', icon: Share2, description: 'Social media marketing' },
-  { value: 'content', label: 'Content Marketing', icon: FileText, description: 'Blog posts, whitepapers, etc.' },
-  { value: 'paid', label: 'Paid Advertising', icon: DollarSign, description: 'PPC and display ads' },
+  { value: 'multi-channel', label: 'Multi-Channel', icon: FileText, description: 'Cross-channel campaigns' },
+  { value: 'abtest', label: 'A/B Test', icon: DollarSign, description: 'Test different pitch variants' },
 ];
 
 interface FormData {
@@ -66,8 +66,10 @@ export default function CampaignCreate() {
   const onSubmit = (data: FormData) => {
     createMutation.mutate({
       ...data,
-      budget: data.budget ? parseFloat(data.budget) : undefined,
-      goals: data.goals ? data.goals : undefined,
+      budget: data.budget ? parseFloat(data.budget) : 0,
+      goals: data.goals ? { description: data.goals } : {},
+      start_date: data.start_date || null,
+      end_date: data.end_date || null,
       target_customers: selectedCustomers.length > 0 ? selectedCustomers : undefined,
     });
   };
