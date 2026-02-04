@@ -1037,7 +1037,21 @@ const PitchGenerator: React.FC = () => {
     if (!generatedPitch) return null;
 
     const displayContent = refinedPitch?.content ?? generatedPitch.content;
-    const displayScores = scores ?? generatedPitch.scores ?? null;
+    // scores state is already in PitchScore format (0-10 scale) from score endpoint.
+    // generatedPitch.scores is the raw JSON field (0-1 scale, flat values, may lack dimensions).
+    const rawScores = generatedPitch.scores;
+    const displayScores: PitchScore | null = scores ?? (rawScores && typeof rawScores === 'object' && Object.keys(rawScores).length > 0
+      ? {
+          persuasiveness: (rawScores.persuasiveness ?? 0) * 10,
+          clarity: (rawScores.clarity ?? 0) * 10,
+          relevance: (rawScores.relevance ?? 0) * 10,
+          personalization: (rawScores.personalization ?? 0) * 10,
+          call_to_action: (rawScores.call_to_action ?? 0) * 10,
+          overall_score: ((rawScores.persuasiveness ?? 0) + (rawScores.clarity ?? 0) + (rawScores.relevance ?? 0) + (rawScores.personalization ?? 0) + (rawScores.call_to_action ?? 0)) / Math.max(Object.keys(rawScores).length, 1) * 10,
+          feedback: '',
+          suggestions: [],
+        }
+      : null);
 
     return (
       <motion.div
@@ -1565,7 +1579,7 @@ const PitchGenerator: React.FC = () => {
                         onClick={() => {
                           setGeneratedPitch(version);
                           setRefinedPitch(null);
-                          setScores(version.scores ?? null);
+                          setScores(null); // Let displayScores convert from generatedPitch.scores
                         }}
                         className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 text-left transition-colors"
                       >

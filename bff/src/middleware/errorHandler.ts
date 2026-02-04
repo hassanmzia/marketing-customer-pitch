@@ -4,6 +4,7 @@ import { AxiosError } from 'axios';
 export interface ApiError {
   status: number;
   message: string;
+  detail?: string;
   details?: unknown;
   code?: string;
   timestamp: string;
@@ -40,9 +41,11 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
       method: axiosErr.config?.method,
     });
 
+    const msg = (backendData?.detail as string) || (backendData?.message as string) || 'Backend service error';
     const errorResponse: ApiError = {
       status,
-      message: (backendData?.detail as string) || (backendData?.message as string) || 'Backend service error',
+      message: msg,
+      detail: msg,
       details: backendData?.errors || backendData,
       code: 'BACKEND_ERROR',
       timestamp,
@@ -63,6 +66,7 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
     const errorResponse: ApiError = {
       status: err.status,
       message: err.message,
+      detail: err.message,
       details: err.details,
       code: err.code,
       timestamp,
@@ -80,6 +84,7 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
     const errorResponse: ApiError = {
       status: 400,
       message: 'Validation failed',
+      detail: 'Validation failed',
       details: err.message,
       code: 'VALIDATION_ERROR',
       timestamp,
@@ -93,9 +98,11 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
   // Handle unexpected errors
   console.error(`[${timestamp}] Unhandled error:`, err);
 
+  const errMsg = process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message;
   const errorResponse: ApiError = {
     status: 500,
-    message: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
+    message: errMsg,
+    detail: errMsg,
     code: 'INTERNAL_ERROR',
     timestamp,
     path,

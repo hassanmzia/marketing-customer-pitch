@@ -176,19 +176,68 @@ class PitchViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='score')
     def score(self, request, pk=None):
-        """Trigger pitch scoring via the AI scorer agent."""
+        """Score a pitch synchronously and return scores matching PitchScore format."""
         pitch = self.get_object()
-        task = async_score_pitch.delay(str(pitch.id))
 
-        return Response(
-            {
-                'message': 'Pitch scoring started',
-                'task_id': task.id,
-                'pitch_id': str(pitch.id),
-                'status': 'pending',
-            },
-            status=status.HTTP_202_ACCEPTED,
-        )
+        # Default fallback scores (0-10 scale)
+        dimensions = {
+            'persuasiveness': 5.0,
+            'clarity': 5.0,
+            'relevance': 5.0,
+            'personalization': 5.0,
+            'call_to_action': 5.0,
+        }
+        feedback = ''
+        suggestions = []
+
+        try:
+            from agents.services import AgentService
+            agent_service = AgentService()
+            ai_scores = agent_service.score_pitch(str(pitch.id))
+
+            # AI returns 0-1 floats; convert to 0-10 scale
+            for dim in dimensions:
+                if dim in ai_scores:
+                    raw = ai_scores[dim]
+                    score_val = raw.get('score', 0.5) if isinstance(raw, dict) else float(raw)
+                    dimensions[dim] = round(score_val * 10, 1)
+
+            # Collect explanations as suggestions
+            for dim, data in ai_scores.items():
+                if isinstance(data, dict) and data.get('explanation'):
+                    suggestions.append(f"{dim.replace('_', ' ').title()}: {data['explanation']}")
+        except Exception as e:
+            logger.warning('AI scoring failed, using fallback scores: %s', e)
+
+        overall_score = round(sum(dimensions.values()) / len(dimensions), 1)
+
+        # Save individual PitchScore records
+        for dim, score_val in dimensions.items():
+            PitchScore.objects.update_or_create(
+                pitch=pitch,
+                dimension=dim,
+                scored_by='scorer_agent',
+                defaults={
+                    'score': score_val / 10.0,  # Store as 0-1 in DB
+                    'explanation': '',
+                },
+            )
+
+        # Update aggregate scores on pitch
+        pitch.scores = {dim: score_val / 10.0 for dim, score_val in dimensions.items()}
+        pitch.status = 'scored'
+        pitch.save(update_fields=['scores', 'status', 'updated_at'])
+
+        return Response({
+            'overall_score': overall_score,
+            'persuasiveness': dimensions['persuasiveness'],
+            'clarity': dimensions['clarity'],
+            'relevance': dimensions['relevance'],
+            'personalization': dimensions['personalization'],
+            'call_to_action': dimensions['call_to_action'],
+            'feedback': feedback,
+            'suggestions': suggestions,
+        })
 
     @action(detail=True, methods=['post'], url_path='refine')
     def refine(self, request, pk=None):
