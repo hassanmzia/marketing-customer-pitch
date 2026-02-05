@@ -54,7 +54,7 @@ export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>('Overview');
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
   const { data: customer, isLoading, isError } = useQuery<any>({
     queryKey: ['customer', id],
@@ -78,7 +78,7 @@ export default function CustomerDetail() {
   });
 
   const toggleSection = (key: string) => {
-    setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
+    setCollapsedSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   if (isLoading) {
@@ -535,13 +535,13 @@ export default function CustomerDetail() {
                         <h3 className="text-sm font-semibold capitalize text-gray-900 dark:text-white">
                           {section.replace(/_/g, ' ')}
                         </h3>
-                        {expandedSections[section] ? (
-                          <ChevronDown className="h-4 w-4 text-gray-400" />
-                        ) : (
+                        {collapsedSections[section] ? (
                           <ChevronRight className="h-4 w-4 text-gray-400" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-gray-400" />
                         )}
                       </button>
-                      {expandedSections[section] && (
+                      {!collapsedSections[section] && (
                         <motion.div
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: 'auto', opacity: 1 }}
