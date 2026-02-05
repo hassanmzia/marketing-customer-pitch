@@ -54,7 +54,7 @@ export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>('Overview');
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
   const { data: customer, isLoading, isError } = useQuery<any>({
     queryKey: ['customer', id],
@@ -78,7 +78,7 @@ export default function CustomerDetail() {
   });
 
   const toggleSection = (key: string) => {
-    setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
+    setCollapsedSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   if (isLoading) {
@@ -524,7 +524,9 @@ export default function CustomerDetail() {
                       AI enrichment is in progress. Refresh the page shortly to see updated data.
                     </div>
                   )}
-                  {Object.entries(c360).map(([section, data]) => (
+                  {Object.entries(c360)
+                    .filter(([key]) => !['enrichment_source', 'enrichment_complete'].includes(key))
+                    .map(([section, data]) => (
                     <Card key={section} className="overflow-hidden">
                       <button
                         onClick={() => toggleSection(section)}
@@ -533,21 +535,46 @@ export default function CustomerDetail() {
                         <h3 className="text-sm font-semibold capitalize text-gray-900 dark:text-white">
                           {section.replace(/_/g, ' ')}
                         </h3>
-                        {expandedSections[section] ? (
-                          <ChevronDown className="h-4 w-4 text-gray-400" />
-                        ) : (
+                        {collapsedSections[section] ? (
                           <ChevronRight className="h-4 w-4 text-gray-400" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-gray-400" />
                         )}
                       </button>
-                      {expandedSections[section] && (
+                      {!collapsedSections[section] && (
                         <motion.div
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: 'auto', opacity: 1 }}
                           className="border-t border-gray-100 p-5 dark:border-gray-800"
                         >
-                          <pre className="whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-300">
-                            {typeof data === 'string' ? data : JSON.stringify(data, null, 2)}
-                          </pre>
+                          {typeof data === 'object' && data !== null && !Array.isArray(data) ? (
+                            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                              {Object.entries(data as Record<string, unknown>).map(([key, val]) => (
+                                <div key={key}>
+                                  <dt className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                                    {key.replace(/_/g, ' ')}
+                                  </dt>
+                                  <dd className="mt-0.5 text-sm text-gray-900 dark:text-white">
+                                    {val === null || val === '' ? (
+                                      <span className="text-gray-400 dark:text-gray-500">—</span>
+                                    ) : Array.isArray(val) ? (
+                                      <ul className="list-disc pl-4 space-y-0.5">
+                                        {val.map((item, i) => <li key={i}>{String(item)}</li>)}
+                                      </ul>
+                                    ) : typeof val === 'object' ? (
+                                      <span>{JSON.stringify(val)}</span>
+                                    ) : (
+                                      String(val)
+                                    )}
+                                  </dd>
+                                </div>
+                              ))}
+                            </dl>
+                          ) : (
+                            <p className="text-sm text-gray-600 dark:text-gray-300">
+                              {typeof data === 'string' ? data : JSON.stringify(data, null, 2)}
+                            </p>
+                          )}
                         </motion.div>
                       )}
                     </Card>
