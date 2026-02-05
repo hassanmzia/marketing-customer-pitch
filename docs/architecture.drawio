@@ -1,0 +1,285 @@
+<mxfile host="app.diagrams.net" modified="2026-02-05" agent="Claude Code" version="24.0.0" type="device">
+  <diagram id="architecture" name="Technical Architecture">
+    <mxGraphModel dx="1800" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="AI Marketing Customer Pitch Assistant — Technical Architecture" style="text;html=1;fontSize=22;fontStyle=1;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="300" y="20" width="1000" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== CLIENT LAYER ==================== -->
+        <mxCell id="client_group" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0f4ff;strokeColor=#4361ee;strokeWidth=2;dashed=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="300" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="client_label" value="Client Layer" style="text;html=1;fontSize=13;fontStyle=1;align=left;verticalAlign=top;fillColor=none;strokeColor=none;fontColor=#4361ee;" vertex="1" parent="1">
+          <mxGeometry x="55" y="85" width="120" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="browser" value="&lt;b&gt;React SPA&lt;/b&gt;&lt;br&gt;TypeScript + Vite&lt;br&gt;Tailwind CSS&lt;br&gt;React Query&lt;br&gt;Zustand State" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4361ee;fontColor=#ffffff;strokeColor=#3a56d4;fontSize=11;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="70" y="115" width="140" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pages" value="&lt;b&gt;Pages&lt;/b&gt;&lt;br&gt;Dashboard · Customers&lt;br&gt;Pitches · Campaigns&lt;br&gt;Agents · Analytics&lt;br&gt;MCP Tools · Templates" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6c7ae0;fontColor=#ffffff;strokeColor=#5a69c9;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="230" y="115" width="100" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== NGINX ==================== -->
+        <mxCell id="nginx" value="&lt;b&gt;Nginx&lt;/b&gt;&lt;br&gt;:3064&lt;br&gt;Reverse Proxy · Static Assets&lt;br&gt;Gzip · Security Headers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2ec4b6;fontColor=#ffffff;strokeColor=#25a89c;fontSize=11;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="120" width="200" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== BFF LAYER ==================== -->
+        <mxCell id="bff_group" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#ff9f1c;strokeWidth=2;dashed=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="700" y="80" width="340" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="bff_label" value="BFF Layer (Node.js / Express)" style="text;html=1;fontSize=13;fontStyle=1;align=left;verticalAlign=top;fillColor=none;strokeColor=none;fontColor=#ff9f1c;" vertex="1" parent="1">
+          <mxGeometry x="715" y="85" width="250" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="bff" value="&lt;b&gt;Express Gateway&lt;/b&gt;&lt;br&gt;:4064&lt;br&gt;Rate Limiting · CORS&lt;br&gt;Helmet · Compression&lt;br&gt;Request Logging" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ff9f1c;fontColor=#ffffff;strokeColor=#e08c18;fontSize=11;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="720" y="115" width="150" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="bff_routes" value="&lt;b&gt;API Routes&lt;/b&gt;&lt;br&gt;/customers&lt;br&gt;/pitches&lt;br&gt;/campaigns&lt;br&gt;/agents&lt;br&gt;/analytics · /mcp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffb74d;fontColor=#ffffff;strokeColor=#f0a040;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="890" y="110" width="130" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="websocket" value="&lt;b&gt;WebSocket&lt;/b&gt;&lt;br&gt;Real-time Updates" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcc80;fontColor=#5d4037;strokeColor=#ffb74d;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="720" y="220" width="130" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== BACKEND LAYER ==================== -->
+        <mxCell id="backend_group" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2d6a4f;strokeWidth=2;dashed=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="340" width="1000" height="320" as="geometry" />
+        </mxCell>
+        <mxCell id="backend_label" value="Backend Layer (Django 5.1 + DRF)" style="text;html=1;fontSize=13;fontStyle=1;align=left;verticalAlign=top;fillColor=none;strokeColor=none;fontColor=#2d6a4f;" vertex="1" parent="1">
+          <mxGeometry x="55" y="345" width="280" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="django" value="&lt;b&gt;Django REST Framework&lt;/b&gt;&lt;br&gt;:8064 (Gunicorn)&lt;br&gt;API v1 Endpoints" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2d6a4f;fontColor=#ffffff;strokeColor=#1b4332;fontSize=11;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="375" width="200" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Django Apps -->
+        <mxCell id="app_customers" value="&lt;b&gt;customers&lt;/b&gt;&lt;br&gt;Customer · Interaction&lt;br&gt;360° View · Import&lt;br&gt;Lead Scoring" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#52b788;fontColor=#ffffff;strokeColor=#40916c;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="455" width="150" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="app_pitches" value="&lt;b&gt;pitches&lt;/b&gt;&lt;br&gt;Pitch · Template · Score&lt;br&gt;Generate · Refine&lt;br&gt;Export (PDF/DOCX/TXT)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#52b788;fontColor=#ffffff;strokeColor=#40916c;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="230" y="455" width="155" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="app_campaigns" value="&lt;b&gt;campaigns&lt;/b&gt;&lt;br&gt;Campaign · Target&lt;br&gt;Multi-Channel&lt;br&gt;A/B Testing" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#52b788;fontColor=#ffffff;strokeColor=#40916c;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="405" y="455" width="140" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="app_agents" value="&lt;b&gt;agents&lt;/b&gt;&lt;br&gt;AgentConfig · Execution&lt;br&gt;A2A Messages&lt;br&gt;AgentService (LangChain)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#52b788;fontColor=#ffffff;strokeColor=#40916c;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="565" y="455" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="app_analytics" value="&lt;b&gt;analytics&lt;/b&gt;&lt;br&gt;PitchAnalytics&lt;br&gt;DashboardMetric&lt;br&gt;AgentPerformance" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#52b788;fontColor=#ffffff;strokeColor=#40916c;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="745" y="455" width="145" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="app_core" value="&lt;b&gt;core&lt;/b&gt;&lt;br&gt;BaseModel (UUID)&lt;br&gt;Health Check" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#74c69d;fontColor=#ffffff;strokeColor=#52b788;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="910" y="455" width="110" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Celery -->
+        <mxCell id="celery" value="&lt;b&gt;Celery Workers&lt;/b&gt;&lt;br&gt;Queues: default · pitches · analytics&lt;br&gt;Concurrency: 2 · Time Limit: 5 min" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#40916c;fontColor=#ffffff;strokeColor=#2d6a4f;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="560" width="300" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="celery_beat" value="&lt;b&gt;Celery Beat&lt;/b&gt;&lt;br&gt;Scheduled Tasks&lt;br&gt;(DatabaseScheduler)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#40916c;fontColor=#ffffff;strokeColor=#2d6a4f;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="380" y="560" width="160" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="flower" value="&lt;b&gt;Flower&lt;/b&gt;&lt;br&gt;:5555 Monitoring" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#74c69d;fontColor=#ffffff;strokeColor=#52b788;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="560" y="560" width="130" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== MCP SERVER ==================== -->
+        <mxCell id="mcp_group" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#7b2cbf;strokeWidth=2;dashed=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="80" width="440" height="580" as="geometry" />
+        </mxCell>
+        <mxCell id="mcp_label" value="AI / MCP Layer" style="text;html=1;fontSize=13;fontStyle=1;align=left;verticalAlign=top;fillColor=none;strokeColor=none;fontColor=#7b2cbf;" vertex="1" parent="1">
+          <mxGeometry x="1115" y="85" width="140" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mcp_server" value="&lt;b&gt;FastMCP Server&lt;/b&gt;&lt;br&gt;:8165&lt;br&gt;Python · LangChain" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#7b2cbf;fontColor=#ffffff;strokeColor=#5a189a;fontSize=11;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="115" width="180" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- MCP Tools -->
+        <mxCell id="tool1" value="research_customer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c77dff;fontColor=#ffffff;strokeColor=#9d4edd;fontSize=9;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="195" width="130" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tool2" value="initial_pitch_prompt" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c77dff;fontColor=#ffffff;strokeColor=#9d4edd;fontSize=9;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="235" width="130" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tool3" value="score_pitch" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c77dff;fontColor=#ffffff;strokeColor=#9d4edd;fontSize=9;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="275" width="130" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tool4" value="refine_pitch" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c77dff;fontColor=#ffffff;strokeColor=#9d4edd;fontSize=9;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="315" width="130" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tool5" value="analyze_sentiment" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c77dff;fontColor=#ffffff;strokeColor=#9d4edd;fontSize=9;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="355" width="130" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tool6" value="generate_subject_line" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c77dff;fontColor=#ffffff;strokeColor=#9d4edd;fontSize=9;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1270" y="195" width="140" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tool7" value="competitive_positioning" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c77dff;fontColor=#ffffff;strokeColor=#9d4edd;fontSize=9;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1270" y="235" width="140" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tool8" value="pitch_ab_variants" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c77dff;fontColor=#ffffff;strokeColor=#9d4edd;fontSize=9;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1270" y="275" width="140" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tool9" value="calculate_lead_score" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c77dff;fontColor=#ffffff;strokeColor=#9d4edd;fontSize=9;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1270" y="315" width="140" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tool10" value="generate_followup_sequence" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c77dff;fontColor=#ffffff;strokeColor=#9d4edd;fontSize=9;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1270" y="355" width="140" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Agent Pipeline -->
+        <mxCell id="pipeline_label" value="Multi-Agent Pipeline (A2A)" style="text;html=1;fontSize=11;fontStyle=1;align=left;verticalAlign=top;fillColor=none;strokeColor=none;fontColor=#7b2cbf;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="405" width="200" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="agent_research" value="1. Research&lt;br&gt;Agent" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9d4edd;fontColor=#ffffff;strokeColor=#7b2cbf;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="430" width="90" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="agent_generator" value="2. Pitch&lt;br&gt;Generator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9d4edd;fontColor=#ffffff;strokeColor=#7b2cbf;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1225" y="430" width="90" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="agent_scorer" value="3. Scorer&lt;br&gt;Agent" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9d4edd;fontColor=#ffffff;strokeColor=#7b2cbf;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1330" y="430" width="90" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="agent_refiner" value="4. Refiner&lt;br&gt;Agent" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9d4edd;fontColor=#ffffff;strokeColor=#7b2cbf;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1225" y="500" width="90" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="agent_orchestrator" value="Orchestrator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#5a189a;fontColor=#ffffff;strokeColor=#3c096c;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="500" width="90" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="agent_strategy" value="5. Strategy&lt;br&gt;Agent" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9d4edd;fontColor=#ffffff;strokeColor=#7b2cbf;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1330" y="500" width="90" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- Agent Pipeline Arrows -->
+        <mxCell id="pipe1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#7b2cbf;strokeWidth=2;endArrow=block;endFill=1;" edge="1" source="agent_research" target="agent_generator" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="pipe2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#7b2cbf;strokeWidth=2;endArrow=block;endFill=1;" edge="1" source="agent_generator" target="agent_scorer" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="pipe3" value="score &lt; 0.7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#e63946;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;fontColor=#e63946;" edge="1" source="agent_scorer" target="agent_refiner" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== DATA LAYER ==================== -->
+        <mxCell id="data_group" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#f4a261;strokeWidth=2;dashed=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="720" width="600" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="data_label" value="Data Layer" style="text;html=1;fontSize=13;fontStyle=1;align=left;verticalAlign=top;fillColor=none;strokeColor=none;fontColor=#f4a261;" vertex="1" parent="1">
+          <mxGeometry x="55" y="725" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="postgres" value="&lt;b&gt;PostgreSQL 16&lt;/b&gt;&lt;br&gt;:5432&lt;br&gt;Customers · Pitches&lt;br&gt;Campaigns · Agents&lt;br&gt;Analytics · Scores" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#f4a261;fontColor=#ffffff;strokeColor=#e76f51;fontSize=10;size=12;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="750" width="160" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis" value="&lt;b&gt;Redis 7&lt;/b&gt;&lt;br&gt;:6379&lt;br&gt;Celery Broker (db 1)&lt;br&gt;Cache (db 1)&lt;br&gt;WebSocket Channels" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#e76f51;fontColor=#ffffff;strokeColor=#d62828;fontSize=10;size=12;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="750" width="160" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- OpenAI -->
+        <mxCell id="openai_group" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#0077b6;strokeWidth=2;dashed=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="700" y="720" width="240" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="openai_label" value="External Services" style="text;html=1;fontSize=13;fontStyle=1;align=left;verticalAlign=top;fillColor=none;strokeColor=none;fontColor=#0077b6;" vertex="1" parent="1">
+          <mxGeometry x="715" y="725" width="140" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="openai" value="&lt;b&gt;OpenAI API&lt;/b&gt;&lt;br&gt;gpt-4o-mini&lt;br&gt;Temperature: 0.7&lt;br&gt;Max Tokens: 4096" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0077b6;fontColor=#ffffff;strokeColor=#023e8a;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="720" y="755" width="200" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== CONNECTIONS ==================== -->
+        <!-- Client → Nginx -->
+        <mxCell id="c1" value="HTTP/WS" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#4361ee;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;fontColor=#4361ee;" edge="1" source="browser" target="nginx" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Nginx → BFF -->
+        <mxCell id="c2" value="/api/* proxy" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2ec4b6;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;fontColor=#2ec4b6;" edge="1" source="nginx" target="bff" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- BFF → Django -->
+        <mxCell id="c3" value="REST API" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#ff9f1c;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;fontColor=#ff9f1c;" edge="1" source="bff" target="django" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="680" y="160" />
+              <mxPoint x="680" y="320" />
+              <mxPoint x="160" y="320" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- BFF → MCP -->
+        <mxCell id="c4" value="/mcp proxy" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#7b2cbf;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;fontColor=#7b2cbf;" edge="1" source="bff_routes" target="mcp_server" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Django → PostgreSQL -->
+        <mxCell id="c5" value="ORM" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2d6a4f;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;fontColor=#2d6a4f;" edge="1" source="django" target="postgres" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="160" y="690" />
+              <mxPoint x="160" y="690" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Celery → Redis -->
+        <mxCell id="c6" value="Broker" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#40916c;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;fontColor=#40916c;" edge="1" source="celery" target="redis" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="380" y="690" />
+              <mxPoint x="380" y="690" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Agents → MCP Tools -->
+        <mxCell id="c7" value="Tool Calls" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#9d4edd;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;fontColor=#9d4edd;dashed=1;" edge="1" source="app_agents" target="mcp_server" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1070" y="495" />
+              <mxPoint x="1070" y="145" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- MCP → OpenAI -->
+        <mxCell id="c8" value="LLM API" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#0077b6;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;fontColor=#0077b6;dashed=1;" edge="1" source="mcp_server" target="openai" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1210" y="690" />
+              <mxPoint x="820" y="690" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Django → Celery -->
+        <mxCell id="c9" value="Task dispatch" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2d6a4f;strokeWidth=1;endArrow=block;endFill=1;fontSize=9;fontColor=#2d6a4f;dashed=1;" edge="1" source="django" target="celery" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
