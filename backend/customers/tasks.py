@@ -51,7 +51,13 @@ def enrich_customer_data(self, customer_id):
                 last_interaction.created_at.isoformat()
             )
 
-        # Try to use agent service for deeper enrichment
+        # Save basic enrichment immediately so the 360 view has data
+        # even if the AI agent call below hangs or fails.
+        customer.customer_360_data = enrichment
+        customer.save(update_fields=['customer_360_data', 'updated_at'])
+        logger.info(f'Saved basic enrichment for customer: {customer.name}')
+
+        # Try to upgrade with AI agent research (best-effort)
         try:
             from agents.services import AgentService
             agent_service = AgentService()
@@ -59,15 +65,15 @@ def enrich_customer_data(self, customer_id):
             if agent_enrichment:
                 enrichment['ai_research'] = agent_enrichment
                 enrichment['enrichment_source'] = 'ai_agent'
+                customer.customer_360_data = enrichment
+                customer.save(update_fields=['customer_360_data', 'updated_at'])
+                logger.info(f'Upgraded enrichment with AI data for: {customer.name}')
         except Exception as agent_err:
             logger.warning(
                 f'Agent enrichment failed for {customer.name}: {agent_err}. '
-                'Using basic enrichment.'
+                'Basic enrichment already saved.'
             )
 
-        customer.customer_360_data = enrichment
-        customer.save(update_fields=['customer_360_data', 'updated_at'])
-        logger.info(f'Successfully enriched data for customer: {customer.name}')
         return {'status': 'success', 'customer_id': customer_id}
 
     except Exception as exc:
