@@ -42,24 +42,61 @@ class CustomerViewSet(viewsets.ModelViewSet):
         pitch history, and enriched data.
         """
         customer = self.get_object()
+
+        # If 360 data is empty, build basic enrichment synchronously so the
+        # view always returns useful data on the first request.  The async
+        # task is still fired for AI-powered enrichment upgrade.
+        if not customer.customer_360_data:
+            last_interaction = customer.interactions.order_by('-created_at').first()
+            enrichment = {
+                'company_profile': {
+                    'name': customer.company,
+                    'industry': customer.industry,
+                    'size': customer.company_size,
+                    'website': customer.website,
+                },
+                'contact_info': {
+                    'primary_contact': customer.name,
+                    'email': customer.email,
+                    'phone': customer.phone,
+                },
+                'engagement_summary': {
+                    'total_interactions': customer.interactions.count(),
+                    'last_interaction': (
+                        last_interaction.created_at.isoformat()
+                        if last_interaction else None
+                    ),
+                    'sentiment_trend': 'neutral',
+                },
+                'enrichment_source': 'internal',
+                'enrichment_complete': True,
+            }
+            customer.customer_360_data = enrichment
+            customer.save(update_fields=['customer_360_data', 'updated_at'])
+            # Kick off AI enrichment upgrade in the background
+            enrich_customer_data.delay(str(customer.id))
+
         serializer = CustomerDetailSerializer(customer)
         data = serializer.data
 
-        # Enrich with pitch data if available
+        # Enrich with pitch data
         from pitches.models import Pitch
         pitches = Pitch.objects.filter(customer=customer, is_active=True)
+        scored_pitches = pitches.exclude(scores={})
+        avg_score = None
+        if scored_pitches.exists():
+            from django.db.models import Avg
+            scores = [p.average_score for p in scored_pitches if p.average_score is not None]
+            if scores:
+                avg_score = round(sum(scores) / len(scores), 2)
+
         data['pitch_summary'] = {
             'total_pitches': pitches.count(),
             'approved_pitches': pitches.filter(status='approved').count(),
-            'average_score': None,
+            'average_score': avg_score,
         }
 
-        # Trigger async enrichment if customer_360_data is empty
-        if not customer.customer_360_data:
-            enrich_customer_data.delay(str(customer.id))
-            data['enrichment_status'] = 'in_progress'
-        else:
-            data['enrichment_status'] = 'complete'
+        data['enrichment_status'] = 'complete'
 
         return Response(data)
 
